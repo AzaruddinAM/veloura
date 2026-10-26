@@ -1,0 +1,146 @@
+<header class="top">
+  <a class="brand" href="#" (click)="go('home'); $event.preventDefault()" aria-label="Veloura home">
+    <img src="img/logo.webp" alt="Veloura" width="180" height="60" />
+  </a>
+  <nav [class.open]="menuOpen()" aria-label="Main">
+    <a href="#shop" (click)="go('shop'); $event.preventDefault()">Collection</a>
+    <a href="#services" (click)="go('services'); $event.preventDefault()">Services</a>
+    <a href="#contact" (click)="go('contact'); $event.preventDefault()">Contact</a>
+  </nav>
+  <button class="bagbtn" (click)="bagOpen.set(true)" aria-label="Open bag">
+    Bag <b [class.pop]="count() > 0">{{ count() }}</b>
+  </button>
+  <button class="burger" (click)="menuOpen.set(!menuOpen())" [attr.aria-expanded]="menuOpen()" aria-label="Menu"><i></i><i></i></button>
+</header>
+
+<main id="home">
+  <section class="hero">
+    <span class="spark s1"></span><span class="spark s2"></span><span class="spark s3"></span><span class="spark s4"></span>
+    <div class="hero-copy">
+      <p class="kicker">Stainless steel AD jewellery</p>
+      <h1>Gold that stays.<br />Shine that lasts.</h1>
+      <p class="lead">Rust-free, skin-friendly pieces with brilliant AD stones, made for the way you actually live.</p>
+      <div class="cta">
+        <button class="btn gold" (click)="go('shop')">Shop the collection</button>
+        <button class="btn line" (click)="go('contact')">Talk to us</button>
+      </div>
+      <ul class="facts">
+        <li>Rust free</li><li>Premium AD stones</li><li>Lightweight</li>
+      </ul>
+    </div>
+    <div class="hero-art">
+      <div class="ring"></div>
+      <div class="arch"><img src="img/p3.webp" alt="Cherry blossom gold cuff with AD stones" width="800" height="570" fetchpriority="high" /></div>
+      <div class="badge">New<br />in</div>
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true">
+    <div class="track">
+      @for (i of [1,2]; track i) {
+        <span>Rust free</span><em></em><span>Premium AD stones</span><em></em><span>Skin friendly</span><em></em><span>Long lasting shine</span><em></em>
+      }
+    </div>
+  </div>
+
+  <section id="shop" class="sec">
+    <h2 reveal>The collection</h2>
+    <div class="chips" role="tablist">
+      @for (c of cats; track c) {
+        <button role="tab" [attr.aria-selected]="cat() === c" [class.on]="cat() === c" (click)="cat.set(c)">{{ c }}</button>
+      }
+    </div>
+    <div class="grid">
+      @for (p of shown(); track p.id; let i = $index) {
+        <article class="card" reveal [style.--d]="(i % 4) * 70 + 'ms'">
+          <div class="pic">
+            <img [src]="'img/' + p.img + '.webp'" [alt]="p.name" width="800" height="570" loading="lazy" decoding="async" />
+            <span class="off">{{ off(p) }}% off</span>
+            <button class="heart" [class.on]="liked().has(p.id)" (click)="like(p.id)" [attr.aria-pressed]="liked().has(p.id)" aria-label="Save to wishlist">♥</button>
+          </div>
+          <div class="info">
+            <h3>{{ p.name }}</h3>
+            <p>{{ p.note }}</p>
+            <div class="buy">
+              <span><b>{{ inr(p.price) }}</b> <s>{{ inr(p.was) }}</s></span>
+              <button class="btn gold sm" (click)="add(p)">Add to bag</button>
+            </div>
+          </div>
+        </article>
+      }
+    </div>
+  </section>
+
+  <section id="services" class="sec dark">
+    <h2 reveal>Made to be worn, not kept in a box</h2>
+    <div class="svc">
+      @for (s of services; track s.t; let i = $index) {
+        <div class="s" reveal [style.--d]="i * 90 + 'ms'">
+          <span class="star"></span>
+          <h3>{{ s.t }}</h3>
+          <p>{{ s.d }}</p>
+        </div>
+      }
+    </div>
+  </section>
+
+  <section id="contact" class="sec contact">
+    <div class="c-info" reveal>
+      <h2>Ask us anything</h2>
+      <p>Tell us the piece you like and we reply with stock, delivery and gifting options.</p>
+      @for (n of phones; track n.tel) {
+        <a class="phone" [href]="'tel:' + n.tel">{{ n.label }}</a>
+      }
+      <a class="btn line" [href]="'https://wa.me/918431360714'" target="_blank" rel="noopener">Chat on WhatsApp</a>
+    </div>
+    <form class="c-form" [formGroup]="form" (ngSubmit)="send()" novalidate reveal>
+      <label>Name
+        <input formControlName="name" autocomplete="name" />
+        @if (form.controls.name.touched && form.controls.name.invalid) { <small>Enter your name.</small> }
+      </label>
+      <label>Phone
+        <input formControlName="phone" inputmode="tel" autocomplete="tel" />
+        @if (form.controls.phone.touched && form.controls.phone.invalid) { <small>Enter a valid 10-digit phone number.</small> }
+      </label>
+      <label>Message
+        <textarea rows="4" formControlName="message"></textarea>
+        @if (form.controls.message.touched && form.controls.message.invalid) { <small>Write at least 5 characters.</small> }
+      </label>
+      <button class="btn gold" type="submit">Send on WhatsApp</button>
+      @if (sent()) { <p class="ok" role="status">Opening WhatsApp. We will reply shortly.</p> }
+    </form>
+  </section>
+</main>
+
+<footer>
+  <img src="img/logo.webp" alt="Veloura" width="140" height="47" />
+  <p>Stainless steel AD jewellery. Elegance, durability, Veloura.</p>
+</footer>
+
+@if (bagOpen()) {
+  <div class="scrim" (click)="bagOpen.set(false)"></div>
+}
+<aside class="drawer" [class.open]="bagOpen()" aria-label="Shopping bag" [attr.aria-hidden]="!bagOpen()">
+  <div class="dh"><h3>Your bag</h3><button (click)="bagOpen.set(false)" aria-label="Close bag">✕</button></div>
+  <div class="lines">
+    @for (l of bag(); track l.p.id) {
+      <div class="line">
+        <img [src]="'img/' + l.p.img + '.webp'" [alt]="l.p.name" width="64" height="64" />
+        <div><b>{{ l.p.name }}</b><span>{{ inr(l.p.price) }}</span></div>
+        <div class="qty">
+          <button (click)="step(l.p.id, -1)" aria-label="Fewer">−</button><i>{{ l.qty }}</i><button (click)="step(l.p.id, 1)" aria-label="More">+</button>
+        </div>
+      </div>
+    } @empty {
+      <p class="empty">Your bag is empty. Add a piece from the collection.</p>
+    }
+  </div>
+  @if (bag().length) {
+    <div class="df">
+      <p><span>Total</span><b>{{ inr(total()) }}</b></p>
+      <button class="btn gold" (click)="checkout()">Order on WhatsApp</button>
+    </div>
+  }
+</aside>
+
+@if (toast()) { <div class="toast" role="status">{{ toast() }}</div> }
