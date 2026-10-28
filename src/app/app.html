@@ -46,7 +46,7 @@
   <section id="shop" class="sec">
     <h2 reveal>The collection</h2>
     <div class="chips" role="tablist">
-      @for (c of cats; track c) {
+      @for (c of cats(); track c) {
         <button role="tab" [attr.aria-selected]="cat() === c" [class.on]="cat() === c" (click)="cat.set(c)">{{ c }}</button>
       }
     </div>
@@ -54,7 +54,7 @@
       @for (p of shown(); track p.id; let i = $index) {
         <article class="card" reveal [style.--d]="(i % 4) * 70 + 'ms'">
           <div class="pic">
-            <img [src]="'img/' + p.img + '.webp'" [alt]="p.name" width="800" height="570" loading="lazy" decoding="async" />
+            <img [attr.srcset]="p.srcset" sizes="(max-width: 600px) 92vw, (max-width: 900px) 46vw, 330px" [src]="p.img" [alt]="p.name" width="800" height="570" loading="lazy" decoding="async" />
             <span class="off">{{ off(p) }}% off</span>
             <button class="heart" [class.on]="liked().has(p.id)" (click)="like(p.id)" [attr.aria-pressed]="liked().has(p.id)" aria-label="Save to wishlist">♥</button>
           </div>
@@ -125,7 +125,7 @@
   <div class="lines">
     @for (l of bag(); track l.p.id) {
       <div class="line">
-        <img [src]="'img/' + l.p.img + '.webp'" [alt]="l.p.name" width="64" height="64" />
+        <img [src]="l.p.thumb || l.p.img" [alt]="l.p.name" width="64" height="64" decoding="async" />
         <div><b>{{ l.p.name }}</b><span>{{ inr(l.p.price) }}</span></div>
         <div class="qty">
           <button (click)="step(l.p.id, -1)" aria-label="Fewer">−</button><i>{{ l.qty }}</i><button (click)="step(l.p.id, 1)" aria-label="More">+</button>
