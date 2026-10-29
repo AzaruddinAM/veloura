@@ -45,7 +45,8 @@ Online shop for Veloura stainless steel AD jewellery. Three parts, all free and 
 - **Categories:** add, rename, reorder, and delete empty ones.
 - **Enquiries:** contact-form messages with WhatsApp reply and call buttons, plus the bag order that came with them.
 - **Settings:**
-  - **Shop display:** choose which photo product cards show first: each product's cover, the light or dark studio photo, or the real photo on a white box or dark velvet box. The starting value comes from `SHOP_PHOTO_THEME` in `backend/.env` (`cover`, `light`, `dark`, `real-white` or `real-dark`); the choice in the admin panel takes priority.
+  - **Shop display:** choose one or more photo types the shop shows: the light or dark studio photo, or the real photo on a white box or dark velvet box. With one type, cards show only that photo (no switcher); with several, customers switch between them. Each product can choose its own types instead (Products › Edit › "Photos shown in the shop"). A product with none of the chosen types shows its cover. The starting value comes from `SHOP_PHOTO_THEMES` in `backend/.env` (comma-separated, e.g. `light,real-white`); the choice in the admin panel takes priority.
+  - **Cover photo:** which photo type is the cover, meaning the photo each card shows first, also used in the bag. Choose "each product's own cover" (its first photo) or light, dark, real white or real dark; products without that type keep their own cover. The starting value comes from `SHOP_COVER_THEME` in `backend/.env` (`product`, `light`, `dark`, `real-white` or `real-dark`).
   - Change your password.
 - **Works on phones:** the menu slides in and tables turn into cards.
 - **Pages use `#` addresses** (for example `/adminpannel/#/orders/5`). That way they work on any hosting without special server rules.
@@ -107,6 +108,11 @@ npm start                                  # http://localhost:4200
 | `cd backend && php artisan admin:create email` | Add an admin, or reset a forgotten password |
 
 ## Going live
+
+The easiest way: upload the ready-made package `release/veloura.zip` (shop, admin panel and backend in one, for a single domain) and follow `DEPLOY.md` inside it. The shop opens at `/` and the admin panel at `/adminpannel/`.
+
+To host the parts separately instead:
+
 
 1. Upload `backend/` to any PHP + MySQL host and point the domain (for example `api.yourdomain.in`) at `backend/public`.
    - Set `APP_ENV=production`, `APP_DEBUG=false`, `APP_URL=https://api.yourdomain.in` and your MySQL details in `.env`.

@@ -35,8 +35,10 @@ export const THEME_KINDS: { value: Theme; label: string; short: string }[] = [
   { value: 'real-dark', label: 'Real: dark velvet box', short: 'Real dark' },
 ];
 export interface ShopSettings {
-  /** Photo shown first on shop cards: each product's cover, or its light / dark version. */
-  photo_theme: 'cover' | Theme;
+  /** Photo types the shop shows (one or more). With one, cards show only that photo. */
+  photo_themes: Theme[];
+  /** Photo type used as the cover (first photo, also in the bag); 'product' keeps each product's own. */
+  cover_theme: 'product' | Theme;
 }
 export interface Photo {
   id: number; theme: Theme; sort: number; crop: Crop; original: string;
@@ -45,6 +47,8 @@ export interface Photo {
 export interface Product {
   id: number; category_id: number; category: string; name: string; note: string;
   price: number; was_price: number; is_active: boolean; sort: number;
+  /** Photo types shown in the shop for this product; null follows the shop setting. */
+  themes: Theme[] | null;
   /** Cover photo (the first of `photos`). */
   img: string | null; srcset: string | null; thumb: string | null;
   photos: Photo[];

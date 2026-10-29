@@ -15,14 +15,10 @@ export interface Product {
   id: number; name: string; cat: string; price: number; was: number; note: string;
   /** Cover photo. */
   img: string; srcset?: string | null; thumb?: string | null;
-  /** All photos, cover first (e.g. the piece on a light and on a dark background). */
+  /** Photos to show, first one first: only the photo types chosen in the admin panel. */
   images?: Photo[];
 }
-export interface ShopSettings {
-  /** Photo shown first on cards: each product's cover, or its light / dark background version. */
-  photo_theme: 'cover' | Theme;
-}
-export interface Catalogue { categories: string[]; products: Product[]; settings?: ShopSettings; }
+export interface Catalogue { categories: string[]; products: Product[]; }
 
 @Injectable({ providedIn: 'root' })
 export class ShopApi {

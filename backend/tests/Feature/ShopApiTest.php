@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Category;
 use App\Models\Order;
 use App\Models\Product;
+use App\Models\Setting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -47,6 +48,51 @@ class ShopApiTest extends TestCase
         // Every photo is listed with its light/dark label, cover first.
         $this->assertSame(['dark', 'light'], array_column($p['images'], 'theme'));
         $this->assertStringEndsWith('/light1/320.webp', $p['images'][1]['img']);
+    }
+
+    public function test_catalogue_shows_only_the_chosen_photo_themes(): void
+    {
+        $p = $this->product();
+        $images = fn () => array_column($this->getJson('/api/catalogue')->json('products.0.images'), 'theme');
+
+        // Shop setting with one type: only that photo, and it becomes the card/bag photo.
+        Setting::put('photo_themes', ['light']);
+        $this->assertSame(['light'], $images());
+        $this->assertStringEndsWith('/light1/160.webp', $this->getJson('/api/catalogue')->json('products.0.thumb'));
+
+        Setting::put('photo_themes', ['light', 'dark']);
+        $this->assertSame(['dark', 'light'], $images());
+
+        // The product's own choice wins over the shop setting.
+        $p->update(['themes' => ['dark']]);
+        $this->assertSame(['dark'], $images());
+
+        // No photo of the chosen type: the cover is shown instead of hiding the product.
+        $p->update(['themes' => ['real-white']]);
+        $this->assertSame(['dark'], $images());
+    }
+
+    public function test_cover_theme_puts_that_photo_first(): void
+    {
+        $this->product();
+        $cat = fn () => $this->getJson('/api/catalogue')->json('products.0');
+
+        // Default: the product's own cover (its first photo, here dark).
+        $this->assertSame(['dark', 'light'], array_column($cat()['images'], 'theme'));
+
+        // Cover type light: the light photo moves to the front and is the card/bag photo.
+        Setting::put('cover_theme', 'light');
+        $this->assertSame(['light', 'dark'], array_column($cat()['images'], 'theme'));
+        $this->assertStringEndsWith('/light1/160.webp', $cat()['thumb']);
+
+        // A cover type the product does not show leaves its own cover in place.
+        Setting::put('cover_theme', 'real-white');
+        $this->assertSame(['dark', 'light'], array_column($cat()['images'], 'theme'));
+
+        // Only shown types count: with the shop on dark only, a light cover does not bring light back.
+        Setting::put('cover_theme', 'light');
+        Setting::put('photo_themes', ['dark']);
+        $this->assertSame(['dark'], array_column($cat()['images'], 'theme'));
     }
 
     public function test_products_without_photos_are_not_listed(): void

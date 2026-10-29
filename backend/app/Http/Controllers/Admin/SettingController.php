@@ -16,12 +16,22 @@ class SettingController extends Controller
 
     public function update(Request $request)
     {
-        $data = $request->validate(collect(Setting::OPTIONS)
-            ->map(fn ($allowed) => ['sometimes', 'required', Rule::in($allowed)])
-            ->all());
+        $rules = [];
+        foreach (Setting::OPTIONS as $key => $allowed) {
+            if (Setting::isSingle($key)) {
+                $rules[$key] = ['sometimes', 'required', 'string', Rule::in($allowed)];
+                continue;
+            }
+            $rules[$key] = ['sometimes', 'required', 'array', 'min:1'];
+            $rules["{$key}.*"] = ['distinct', Rule::in($allowed)];
+        }
+        $data = $request->validate($rules, [
+            'photo_themes.required' => 'Choose at least one photo type.',
+            'photo_themes.min' => 'Choose at least one photo type.',
+        ]);
 
-        foreach ($data as $key => $value) {
-            Setting::put($key, $value);
+        foreach ($data as $key => $values) {
+            Setting::put($key, $values);
         }
 
         return Setting::values();

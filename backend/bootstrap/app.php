@@ -6,7 +6,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 
-return Application::configure(basePath: dirname(__DIR__))
+$app = Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         web: __DIR__.'/../routes/web.php',
         api: __DIR__.'/../routes/api.php',
@@ -23,3 +23,12 @@ return Application::configure(basePath: dirname(__DIR__))
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
     })->create();
+
+// Hostinger-style hosting: the web folder (public_html) sits next to this app folder
+// instead of inside it. Use it as the public folder so the website, the admin panel
+// and uploaded product photos (public/media) all live where visitors can reach them.
+if (is_dir($web = dirname(__DIR__, 2).'/public_html')) {
+    $app->usePublicPath($web);
+}
+
+return $app;

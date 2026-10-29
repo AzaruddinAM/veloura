@@ -232,26 +232,57 @@ class AdminApiTest extends TestCase
         $this->deleteJson("/api/admin/enquiries/{$e->id}")->assertNoContent();
     }
 
-    public function test_default_photo_theme_setting(): void
+    public function test_photo_themes_setting(): void
     {
-        // Starts from config (SHOP_PHOTO_THEME), then the admin panel takes over.
-        config(['shop.photo_theme' => 'dark']);
-        $this->getJson('/api/catalogue')->assertJsonPath('settings.photo_theme', 'dark');
+        // Starts from config (SHOP_PHOTO_THEMES), then the admin panel takes over.
+        config(['shop.photo_themes' => 'dark, real-dark']);
 
         Sanctum::actingAs($this->admin());
-        $this->getJson('/api/admin/settings')->assertExactJson(['photo_theme' => 'dark']);
-        $this->putJson('/api/admin/settings', ['photo_theme' => 'light'])->assertExactJson(['photo_theme' => 'light']);
-        $this->putJson('/api/admin/settings', ['photo_theme' => 'pink'])->assertJsonValidationErrors('photo_theme');
-        $this->putJson('/api/admin/settings', ['photo_theme' => 'real-dark'])->assertExactJson(['photo_theme' => 'real-dark']);
-        $this->putJson('/api/admin/settings', ['photo_theme' => 'light'])->assertOk();
+        $this->getJson('/api/admin/settings')->assertExactJson(['photo_themes' => ['dark', 'real-dark'], 'cover_theme' => 'product']);
+        $this->putJson('/api/admin/settings', ['photo_themes' => ['real-white', 'light']])->assertExactJson(['photo_themes' => ['light', 'real-white'], 'cover_theme' => 'product']);
+        $this->putJson('/api/admin/settings', ['photo_themes' => ['pink']])->assertJsonValidationErrors('photo_themes.0');
+        $this->putJson('/api/admin/settings', ['photo_themes' => []])->assertJsonValidationErrors('photo_themes');
+        $this->putJson('/api/admin/settings', ['photo_themes' => ['light', 'light']])->assertJsonValidationErrors('photo_themes.0');
+        $this->getJson('/api/admin/settings')->assertExactJson(['photo_themes' => ['light', 'real-white'], 'cover_theme' => 'product']);
 
-        // The cached catalogue is refreshed straight away.
-        $this->getJson('/api/catalogue')->assertJsonPath('settings.photo_theme', 'light');
-
-        // A bad value in .env falls back to each product's cover.
+        // Bad values in .env are dropped; with none valid, every type is shown.
         Setting::query()->delete();
-        config(['shop.photo_theme' => 'purple']);
-        $this->assertSame('cover', Setting::get('photo_theme'));
+        config(['shop.photo_themes' => 'purple,dark']);
+        $this->assertSame(['dark'], Setting::get('photo_themes'));
+        config(['shop.photo_themes' => 'purple']);
+        $this->assertSame(ProductPhoto::THEMES, Setting::get('photo_themes'));
+    }
+
+    public function test_cover_theme_setting(): void
+    {
+        Sanctum::actingAs($this->admin());
+        $this->putJson('/api/admin/settings', ['cover_theme' => 'real-white'])->assertJsonPath('cover_theme', 'real-white');
+        $this->putJson('/api/admin/settings', ['cover_theme' => 'gold'])->assertJsonValidationErrors('cover_theme');
+        $this->putJson('/api/admin/settings', ['cover_theme' => ['light']])->assertJsonValidationErrors('cover_theme');
+        // Saving one setting leaves the other alone.
+        $this->putJson('/api/admin/settings', ['photo_themes' => ['dark']])->assertJsonPath('cover_theme', 'real-white');
+
+        // From .env until saved; a bad value falls back to each product's own cover.
+        Setting::query()->delete();
+        config(['shop.cover_theme' => 'dark']);
+        $this->assertSame('dark', Setting::get('cover_theme'));
+        config(['shop.cover_theme' => 'purple']);
+        $this->assertSame('product', Setting::get('cover_theme'));
+    }
+
+    public function test_product_can_choose_its_own_photo_themes(): void
+    {
+        Sanctum::actingAs($this->admin());
+        $p = $this->product();
+        $body = ['category_id' => $p->category_id, 'name' => 'Ring', 'price' => 100, 'was_price' => 100];
+
+        $this->post("/api/admin/products/{$p->id}", [...$body, 'themes' => ['real-dark', 'light']], ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('themes', ['light', 'real-dark']);
+        $this->post("/api/admin/products/{$p->id}", [...$body, 'themes' => ['gold']], ['Accept' => 'application/json'])
+            ->assertJsonValidationErrors('themes.0');
+        // Nothing chosen: back to following the shop setting.
+        $this->post("/api/admin/products/{$p->id}", [...$body, 'themes' => ''], ['Accept' => 'application/json'])
+            ->assertOk()->assertJsonPath('themes', null);
     }
 
     public function test_password_change_requires_current_password(): void

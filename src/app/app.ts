@@ -136,13 +136,9 @@ export class App {
   inr(n: number) { return '₹' + n.toLocaleString('en-IN'); }
   off(p: Product) { return Math.round((1 - p.price / p.was) * 100); }
 
-  /** Photo a card shows: the customer's pick, else the shop's default background, else the cover. */
+  /** Photo a card shows: the customer's pick, else the first one (the server only sends the chosen photo types). */
   shotOf(p: Product) {
-    const picked = this.shots()[p.id];
-    if (picked !== undefined) return Math.min(picked, (p.images?.length ?? 1) - 1);
-    const theme = this.catalogue().settings?.photo_theme ?? 'cover';
-    const match = theme === 'cover' ? -1 : p.images?.findIndex(i => i.theme === theme) ?? -1;
-    return Math.max(0, match);
+    return Math.max(0, Math.min(this.shots()[p.id] ?? 0, (p.images?.length ?? 1) - 1));
   }
   photo(p: Product): Photo { return p.images?.[this.shotOf(p)] ?? p; }
   themeName(t: string) {

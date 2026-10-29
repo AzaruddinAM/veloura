@@ -27,27 +27,32 @@ class CatalogueController extends Controller
                 ->get();
 
             $used = $products->pluck('category_id')->unique();
+            $themes = Setting::get('photo_themes');
+            $cover = Setting::get('cover_theme');
 
             return [
-                // e.g. photo_theme: which photo cards show first ('cover', 'light' or 'dark').
-                'settings' => Setting::values(),
                 'categories' => Category::orderBy('sort')->orderBy('name')->get()
                     ->filter(fn (Category $c) => $used->contains($c->id))
                     ->pluck('name')
                     ->values()
                     ->all(),
-                'products' => $products->map(fn (Product $p) => [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'cat' => $p->category->name,
-                    'price' => $p->price,
-                    'was' => $p->was_price,
-                    'note' => $p->note,
-                    // Cover photo at the top level (the bag and older pages use it) ...
-                    ...$p->imageSet(),
-                    // ... and every photo, e.g. light and dark background versions.
-                    'images' => $p->photos->map(fn (ProductPhoto $ph) => [...$ph->set(), 'theme' => $ph->theme])->values()->all(),
-                ])->values()->all(),
+                'products' => $products->map(function (Product $p) use ($themes, $cover) {
+                    // Only the chosen photo types (the product's own, else the shop's), cover type first.
+                    $photos = $p->shopPhotos($themes, $cover);
+
+                    return [
+                        'id' => $p->id,
+                        'name' => $p->name,
+                        'cat' => $p->category->name,
+                        'price' => $p->price,
+                        'was' => $p->was_price,
+                        'note' => $p->note,
+                        // First shown photo at the top level (the bag uses it) ...
+                        ...$photos->first()->set(),
+                        // ... and every shown photo; with one, cards have no photo switcher.
+                        'images' => $photos->map(fn (ProductPhoto $ph) => [...$ph->set(), 'theme' => $ph->theme])->all(),
+                    ];
+                })->values()->all(),
             ];
         });
     }

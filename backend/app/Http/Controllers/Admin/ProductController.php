@@ -165,6 +165,9 @@ class ProductController extends Controller
             'was_price' => ['required', 'integer', 'gte:price', 'max:10000000'],
             'sort' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'is_active' => ['nullable', 'boolean'],
+            // Photo types shown in the shop; empty follows the shop setting.
+            'themes' => ['nullable', 'array'],
+            'themes.*' => ['distinct', Rule::in(ProductPhoto::THEMES)],
         ];
     }
 
@@ -189,6 +192,8 @@ class ProductController extends Controller
             'was_price' => $data['was_price'],
             'sort' => $data['sort'] ?? 0,
             'is_active' => $request->boolean('is_active', true),
+            // None chosen = follow the shop setting.
+            'themes' => array_values(array_intersect(ProductPhoto::THEMES, $data['themes'] ?? [])) ?: null,
         ];
     }
 

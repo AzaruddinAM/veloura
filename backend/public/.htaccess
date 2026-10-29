@@ -1,14 +1,22 @@
-# --- Veloura: fast images and responses (Apache, free) ----------------------
-# Product images under /media/ have content-hashed folder names, so a new photo
-# always gets a new URL. Browsers can therefore keep them for a year.
-<IfModule mod_headers.c>
-    <If "%{REQUEST_URI} =~ m#^/media/#">
-        Header set Cache-Control "public, max-age=31536000, immutable"
-    </If>
-    # Admin panel build files have a content hash in their names (e.g. main-AB12CD.js).
-    <If "%{REQUEST_URI} =~ m#^/adminpannel/.+-[A-Z0-9]{8}\.(js|css)$#">
-        Header set Cache-Control "public, max-age=31536000, immutable"
-    </If>
+# The shop website (index.html) opens at the site root; everything else goes to Laravel (index.php).
+DirectoryIndex index.html index.php
+
+# --- Veloura: fast images and responses (Apache / LiteSpeed, free) ----------
+# Browser caching by file TYPE, so it only applies to real images, scripts and
+# styles. Error pages ("Not Found") are HTML and are never cached this way, so a
+# photo that is added later shows up straight away. (Rules based on the address
+# also cached 404s for a year on LiteSpeed/Hostinger.)
+# Product photos (/media/...) and the built scripts/styles have content-hashed
+# names, so a changed file always gets a new address.
+<IfModule mod_expires.c>
+    ExpiresActive On
+    ExpiresByType image/webp "access plus 30 days"
+    ExpiresByType image/avif "access plus 30 days"
+    ExpiresByType image/x-icon "access plus 30 days"
+    ExpiresByType text/css "access plus 30 days"
+    ExpiresByType application/javascript "access plus 30 days"
+    ExpiresByType text/javascript "access plus 30 days"
+    ExpiresByType text/html "access plus 0 seconds"
 </IfModule>
 <IfModule mod_mime.c>
     AddType image/webp .webp

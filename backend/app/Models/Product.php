@@ -3,15 +3,16 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 
-#[Fillable(['category_id', 'name', 'note', 'price', 'was_price', 'is_active', 'sort'])]
+#[Fillable(['category_id', 'name', 'note', 'price', 'was_price', 'is_active', 'sort', 'themes'])]
 class Product extends Model
 {
-    public const CATALOGUE_CACHE_KEY = 'catalogue.v2';
+    public const CATALOGUE_CACHE_KEY = 'catalogue.v3';
 
     protected function casts(): array
     {
@@ -19,6 +20,8 @@ class Product extends Model
             'price' => 'integer',
             'was_price' => 'integer',
             'is_active' => 'boolean',
+            // Photo types this product shows, e.g. ["light","real-white"]; null follows the shop setting.
+            'themes' => 'array',
         ];
     }
 
@@ -54,6 +57,32 @@ class Product extends Model
         return $this->photos->first()?->set() ?? ['img' => null, 'srcset' => null, 'thumb' => null];
     }
 
+    /**
+     * Photos the shop shows: those of the product's own photo types, else the shop's.
+     * When none match, the cover is shown so the product never disappears.
+     * With a cover type (e.g. 'real-white'), the first photo of that type moves to the
+     * front and becomes the cover; 'product' keeps the product's own order.
+     *
+     * @param  list<string>  $shopThemes
+     */
+    public function shopPhotos(array $shopThemes, string $coverTheme = 'product'): Collection
+    {
+        $themes = $this->themes ?: $shopThemes;
+        $shown = $this->photos->filter(fn (ProductPhoto $ph) => in_array($ph->theme, $themes, true))->values();
+        if ($shown->isEmpty()) {
+            return $this->photos->take(1)->values();
+        }
+
+        $cover = $shown->search(fn (ProductPhoto $ph) => $ph->theme === $coverTheme);
+        if ($cover === false || $cover === 0) {
+            return $shown;
+        }
+
+        $first = $shown[$cover];
+
+        return $shown->reject(fn (ProductPhoto $ph) => $ph->is($first))->prepend($first)->values();
+    }
+
     /** Shape used by the admin panel. */
     public function toAdmin(): array
     {
@@ -67,6 +96,7 @@ class Product extends Model
             'was_price' => $this->was_price,
             'is_active' => $this->is_active,
             'sort' => $this->sort,
+            'themes' => $this->themes,
             ...$this->imageSet(),
             'photos' => $this->photos->map->toAdmin()->values(),
             'updated_at' => $this->updated_at?->toIso8601String(),

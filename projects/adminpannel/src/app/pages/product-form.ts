@@ -72,6 +72,22 @@ const ACCEPT = /^image\/(jpeg|png|webp|avif|gif)$/;
             <span class="switch"><input type="checkbox" name="is_active" [(ngModel)]="f.is_active" /><i></i></span>
             {{ f.is_active ? 'On sale: shown on the website' : 'Hidden from the website' }}
           </label>
+          <div class="field shows">
+            <span>Photos shown in the shop</span>
+            <div class="themes" role="group" aria-label="Photos shown in the shop">
+              <button type="button" class="chip" role="checkbox" [class.on]="!f.themes.length" [attr.aria-checked]="!f.themes.length" (click)="f.themes = []">Shop setting</button>
+              @for (k of kinds; track k.value) {
+                @let on = f.themes.includes(k.value);
+                <button type="button" class="chip" role="checkbox" [class.on]="on" [class.missing]="!has(k.value)" [attr.aria-checked]="on" (click)="toggleShown(k.value)"
+                        [title]="has(k.value) ? '' : 'No photo of this type yet'">{{ k.label }}</button>
+              }
+            </div>
+            @if (!f.themes.length) { <small class="hint">Follows Settings › Shop display.</small> }
+            @else if (!shownCount() && !tiles().some(t => t.theme === null)) { <small class="err">No photo of {{ f.themes.length === 1 ? 'this type' : 'these types' }} yet, so the shop shows the cover.</small> }
+            @else if (f.themes.length === 1) { <small class="hint">Only this photo is shown, with no switcher.</small> }
+            @else { <small class="hint">Customers can switch between these photos.</small> }
+            @if (errs()['themes']) { <small class="err">{{ errs()['themes'] }}</small> }
+          </div>
         </section>
 
         <section class="card photos">
@@ -162,6 +178,8 @@ const ACCEPT = /^image\/(jpeg|png|webp|avif|gif)$/;
     .card-pv{width:150px;height:150px;border-radius:6px 6px 0 0}
     .bag-pv{width:64px;height:64px;border-radius:6px}
     .themes{display:flex;gap:.4rem;align-items:center;flex-wrap:wrap}
+    .shows{margin-top:1rem}
+    .chip.missing:not(.on){opacity:.55;border-style:dashed}
     .gallery{list-style:none;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:.8rem}
     .tile{display:grid;gap:.4rem;align-content:start}
     .sq{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;background:#000;border:1px solid var(--line)}
@@ -197,7 +215,8 @@ export class ProductFormPage {
   readonly errs = signal<Record<string, string>>({});
   readonly photoErrors = computed(() => Object.entries(this.errs()).filter(([k]) => k.startsWith('photo') || k === 'image' || k === 'theme' || k.startsWith('crop')).map(([, v]) => v));
 
-  f = { name: '', note: '', category_id: null as number | null, sort: 0, price: null as number | null, was_price: null as number | null, is_active: true };
+  // themes: photo types shown in the shop; empty follows the shop setting.
+  f = { name: '', note: '', category_id: null as number | null, sort: 0, price: null as number | null, was_price: null as number | null, is_active: true, themes: [] as Theme[] };
 
   // New product: photos wait here until "Add product".
   readonly pending = signal<Pending[]>([]);
@@ -232,7 +251,7 @@ export class ProductFormPage {
           const p = list.find(x => x.id === +id);
           if (!p) { this.loadError.set('This product does not exist any more.'); return; }
           this.product.set(p);
-          this.f = { name: p.name, note: p.note, category_id: p.category_id, sort: p.sort, price: p.price, was_price: p.was_price, is_active: p.is_active };
+          this.f = { name: p.name, note: p.note, category_id: p.category_id, sort: p.sort, price: p.price, was_price: p.was_price, is_active: p.is_active, themes: p.themes ?? [] };
         },
         error: e => this.loadError.set(errorText(e)),
       });
@@ -245,6 +264,16 @@ export class ProductFormPage {
     return price && was_price && was_price > price ? Math.round((1 - price / was_price) * 100) : 0;
   }
   preview(box: number) { return cropStyle(this.crop(), this.nat().w, this.nat().h, box); }
+
+  // ---- Photos shown in the shop ----
+  /** Whether the product has a photo of this type (not-yet-detected photos count as none). */
+  has(t: Theme) { return this.tiles().some(x => x.theme === t); }
+  shownCount() { return this.tiles().filter(x => x.theme && this.f.themes.includes(x.theme)).length; }
+  toggleShown(t: Theme) {
+    const cur = this.f.themes;
+    // Kept in the same order as the type list.
+    this.f.themes = this.kinds.map(k => k.value).filter(v => v === t ? !cur.includes(t) : cur.includes(v));
+  }
 
   // ---- Choosing files ----
   pick(e: Event) {
@@ -381,6 +410,9 @@ export class ProductFormPage {
     body.append('price', String(f.price ?? ''));
     body.append('was_price', String(f.was_price ?? ''));
     body.append('is_active', f.is_active ? '1' : '0');
+    // An empty value clears the choice (follow the shop setting).
+    if (f.themes.length) f.themes.forEach(t => body.append('themes[]', t));
+    else body.append('themes', '');
     if (!this.editing()) {
       this.pending().forEach((p, i) => {
         body.append(`photos[${i}][image]`, p.file);
