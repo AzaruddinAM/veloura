@@ -25,5 +25,5 @@ Artisan::command('admin:create {email} {--name=Veloura Admin} {--password=}', fu
     $user->is_admin = true;
     $user->save();
 
-    $this->info("Admin {$email} is ready. Log in at ".url('/admin'));
+    $this->info("Admin {$email} is ready. Log in at ".url('/adminpannel/'));
 })->purpose('Create an admin login (or reset its password)');

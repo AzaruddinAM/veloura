@@ -2,9 +2,13 @@
 # Product images under /media/ have content-hashed folder names, so a new photo
 # always gets a new URL. Browsers can therefore keep them for a year.
 <IfModule mod_headers.c>
-    <FilesMatch "\.(webp|avif|jpe?g|png|svg|ico)$">
+    <If "%{REQUEST_URI} =~ m#^/media/#">
         Header set Cache-Control "public, max-age=31536000, immutable"
-    </FilesMatch>
+    </If>
+    # Admin panel build files have a content hash in their names (e.g. main-AB12CD.js).
+    <If "%{REQUEST_URI} =~ m#^/adminpannel/.+-[A-Z0-9]{8}\.(js|css)$#">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </If>
 </IfModule>
 <IfModule mod_mime.c>
     AddType image/webp .webp

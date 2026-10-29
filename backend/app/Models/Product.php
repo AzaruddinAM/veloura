@@ -5,20 +5,19 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Storage;
 
 #[Fillable(['category_id', 'name', 'note', 'price', 'was_price', 'is_active', 'sort'])]
 class Product extends Model
 {
-    public const CATALOGUE_CACHE_KEY = 'catalogue.v1';
+    public const CATALOGUE_CACHE_KEY = 'catalogue.v2';
 
     protected function casts(): array
     {
         return [
             'price' => 'integer',
             'was_price' => 'integer',
-            'image_sizes' => 'array',
             'is_active' => 'boolean',
         ];
     }
@@ -39,30 +38,38 @@ class Product extends Model
         return $this->belongsTo(Category::class);
     }
 
-    public function imageUrl(int $size): string
+    /** Photos in display order; the first one is the cover. */
+    public function photos(): HasMany
     {
-        return Storage::disk('media')->url("products/{$this->image_key}/{$size}.webp");
+        return $this->hasMany(ProductPhoto::class)->orderBy('sort')->orderBy('id');
     }
 
     /**
-     * Image URLs for the storefront: a default src, a srcset for the browser to
-     * pick the smallest file that looks sharp, and a tiny thumb for the bag.
+     * Cover photo URLs (img, srcset, thumb), or nulls when there is no photo.
      *
      * @return array{img: ?string, srcset: ?string, thumb: ?string}
      */
     public function imageSet(): array
     {
-        $sizes = $this->image_sizes ?? [];
-        if (! $this->image_key || ! $sizes) {
-            return ['img' => null, 'srcset' => null, 'thumb' => null];
-        }
+        return $this->photos->first()?->set() ?? ['img' => null, 'srcset' => null, 'thumb' => null];
+    }
 
-        $default = collect($sizes)->filter(fn ($s) => $s <= 640)->max() ?? min($sizes);
-
+    /** Shape used by the admin panel. */
+    public function toAdmin(): array
+    {
         return [
-            'img' => $this->imageUrl($default),
-            'srcset' => collect($sizes)->map(fn ($s) => $this->imageUrl($s)." {$s}w")->implode(', '),
-            'thumb' => $this->imageUrl(min($sizes)),
+            'id' => $this->id,
+            'category_id' => $this->category_id,
+            'category' => $this->category?->name,
+            'name' => $this->name,
+            'note' => $this->note,
+            'price' => $this->price,
+            'was_price' => $this->was_price,
+            'is_active' => $this->is_active,
+            'sort' => $this->sort,
+            ...$this->imageSet(),
+            'photos' => $this->photos->map->toAdmin()->values(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
     }
 }

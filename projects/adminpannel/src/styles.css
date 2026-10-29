@@ -1,0 +1,122 @@
+/* Veloura admin: the storefront's ink / cocoa / gold palette, tuned for long working sessions. */
+:root{
+  --ink:#0b0605;--bg:#120b08;--panel:#1c120d;--panel2:#24170f;--line:#3a2a1e;--line2:#4d3826;
+  --gold:#d4a95a;--gold-hi:#f3d992;--gold-mark:#b08236;--cream:#f7efe2;--text2:#d8c8b2;--muted:#a3917b;
+  --ok:#7fc58a;--warn:#e9b44c;--bad:#ef8a7a;--info:#8fb8e8;
+  --serif:'Cormorant Garamond',Georgia,serif;--sans:'Jost',system-ui,sans-serif;
+  --r:12px;
+}
+*{box-sizing:border-box;margin:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--cream);font:400 15px/1.55 var(--sans);-webkit-font-smoothing:antialiased}
+img{max-width:100%;display:block}
+a{color:var(--gold-hi);text-decoration:none}
+a:hover{text-decoration:underline}
+button{font:inherit;color:inherit;cursor:pointer;background:none;border:0}
+:focus-visible{outline:2px solid var(--gold-hi);outline-offset:2px}
+h1,h2,h3{font-family:var(--serif);font-weight:600;line-height:1.1}
+/* Cormorant defaults to old-style figures (1 looks like I, 0 like o); use lining ones. */
+body,h1,h2,h3{font-variant-numeric:lining-nums}
+h1{font-size:clamp(1.9rem,3vw,2.4rem)}
+h2{font-size:1.45rem}
+h3{font-size:1.15rem}
+
+/* Page frame */
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.4rem}
+.page-head p{color:var(--muted);margin-top:.2rem}
+.toolbar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem}
+.toolbar .grow{flex:1;min-width:200px}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.right{text-align:right}
+.row{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.stack{display:grid;gap:1rem}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 1rem}
+@media (max-width:700px){.grid2{grid-template-columns:1fr}}
+
+/* Surfaces */
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:1.2rem}
+.card>h2,.card>h3{margin-bottom:.9rem}
+.card-head{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin-bottom:.9rem}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.45rem;border-radius:99px;padding:.55rem 1.15rem;font-weight:500;letter-spacing:.02em;border:1px solid transparent;transition:background .2s,border-color .2s,transform .15s,opacity .2s;white-space:nowrap;text-decoration:none!important}
+.btn:active{transform:translateY(1px)}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn.gold{background:linear-gradient(120deg,var(--gold),var(--gold-hi));color:var(--ink)}
+.btn.gold:hover:not(:disabled){filter:brightness(1.06)}
+.btn.line{border-color:var(--line2);color:var(--cream)}
+.btn.line:hover:not(:disabled){border-color:var(--gold)}
+.btn.ghost{color:var(--text2);padding-inline:.7rem}
+.btn.ghost:hover:not(:disabled){color:var(--gold-hi);background:#ffffff08}
+.btn.danger{border-color:#7a3b32;color:var(--bad)}
+.btn.danger:hover:not(:disabled){background:#ef8a7a14;border-color:var(--bad)}
+.btn.sm{padding:.35rem .8rem;font-size:.88rem}
+.btn.icon{width:2.2rem;height:2.2rem;padding:0}
+
+/* Forms */
+label.field{display:grid;gap:.3rem;align-content:start;margin-bottom:1rem;color:var(--text2);font-size:.9rem}
+label.field>span{color:var(--gold);font-size:.85rem;letter-spacing:.03em}
+input,select,textarea{font:inherit;color:var(--cream);background:var(--ink);border:1px solid var(--line2);border-radius:9px;padding:.6rem .8rem;width:100%;transition:border-color .2s}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--gold)}
+input::placeholder,textarea::placeholder{color:#7d6c59}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--gold) 50%),linear-gradient(135deg,var(--gold) 50%,transparent 50%);background-position:calc(100% - 16px) 55%,calc(100% - 11px) 55%;background-size:5px 5px;background-repeat:no-repeat;padding-right:2rem}
+.err{color:var(--bad);font-size:.82rem}
+.hint{color:var(--muted);font-size:.82rem}
+.input-search{background:var(--ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23a3917b' stroke-width='2'%3E%3Ccircle cx='7' cy='7' r='5'/%3E%3Cpath d='m11 11 4 4'/%3E%3C/svg%3E") no-repeat .8rem 50%;padding-left:2.3rem}
+
+/* Toggle switch: <label class="switch"><input type="checkbox"><i></i></label> */
+.switch{position:relative;display:inline-block;width:42px;height:24px;flex:none}
+.switch input{position:absolute;opacity:0;inset:0;margin:0;cursor:pointer}
+.switch i{position:absolute;inset:0;border-radius:99px;background:#3a2a1e;transition:background .2s;pointer-events:none}
+.switch i::after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--cream);transition:transform .2s}
+.switch input:checked+i{background:var(--gold)}
+.switch input:checked+i::after{transform:translateX(18px);background:var(--ink)}
+.switch input:focus-visible+i{outline:2px solid var(--gold-hi);outline-offset:2px}
+
+/* Chips / tabs */
+.chips{display:flex;gap:.4rem;flex-wrap:wrap}
+.chip{border:1px solid var(--line2);border-radius:99px;padding:.32rem .9rem;font-size:.9rem;color:var(--text2);transition:all .2s;display:inline-flex;gap:.4rem;align-items:center}
+.chip:hover{border-color:var(--gold)}
+.chip.on{background:var(--gold);border-color:var(--gold);color:var(--ink)}
+.chip b{font-weight:500;opacity:.75;font-size:.8rem}
+
+/* Status pills: color + label, never color alone */
+.pill{display:inline-flex;align-items:center;gap:.35rem;padding:.1rem .6rem;border-radius:99px;font-size:.8rem;border:1px solid currentColor;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.pill.pending{color:var(--warn)}.pill.confirmed{color:var(--info)}.pill.shipped{color:var(--gold-hi)}
+.pill.delivered{color:var(--ok)}.pill.cancelled{color:var(--bad)}
+.pill.off{color:var(--muted)}
+
+/* Tables that turn into cards on phones */
+.table{width:100%;border-collapse:collapse}
+.table th{font-weight:500;color:var(--muted);font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:.6rem .8rem;border-bottom:1px solid var(--line)}
+.table td{padding:.75rem .8rem;border-bottom:1px solid var(--line);vertical-align:middle}
+.table tr:last-child td{border-bottom:0}
+.table tr.link{cursor:pointer;transition:background .15s}
+.table tr.link:hover td{background:#ffffff06}
+@media (max-width:760px){
+  .table thead{display:none}
+  .table,.table tbody,.table tr,.table td{display:block;width:100%}
+  .table tr{padding:.7rem .2rem;border-bottom:1px solid var(--line)}
+  .table tr:last-child{border-bottom:0}
+  .table td{border:0;padding:.15rem .6rem;display:flex;justify-content:space-between;gap:1rem}
+  .table td[data-l]::before{content:attr(data-l);color:var(--muted);font-size:.82rem}
+}
+
+/* Loading & empty */
+.skel{background:linear-gradient(90deg,#24170f 0,#2f1f15 50%,#24170f 100%);background-size:200% 100%;animation:sk 1.2s linear infinite;border-radius:8px}
+@keyframes sk{to{background-position:-200% 0}}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--muted)}
+.empty b{display:block;color:var(--text2);font-weight:500;margin-bottom:.3rem}
+
+/* Pagination */
+.pager{display:flex;justify-content:center;align-items:center;gap:.6rem;margin-top:1.2rem}
+
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+@media print{
+  body{background:#fff;color:#000}
+  .no-print{display:none!important}
+  .card{border-color:#ccc;background:#fff}
+  .pill{color:#000!important}
+}

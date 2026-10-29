@@ -1,0 +1,11 @@
+/* Veloura admin panel: built into backend/public/adminpannel and served at /adminpannel/. */
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../../out-tsc/adminpannel",
+    "types": []
+  },
+  "include": [
+    "src/**/*.ts"
+  ]
+}

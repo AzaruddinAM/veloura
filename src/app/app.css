@@ -95,9 +95,9 @@ footer img{margin:0 auto .6rem;mix-blend-mode:screen}
 .dh{display:flex;justify-content:space-between;align-items:center;padding:1.2rem 1.4rem;border-bottom:1px solid #d4a95a44}
 .dh h3{font-size:1.8rem}
 .lines{flex:1;overflow:auto;padding:1rem 1.4rem}
-.line{display:grid;gap:.8rem;align-items:center;border-bottom:1px solid #d4a95a22}
-.line img{border-radius:6px;width:64px;height:64px;object-fit:cover}
-.line span{display:block;color:var(--gold-hi)}
+.lines .line{display:grid;gap:.8rem;align-items:center;border-bottom:1px solid #d4a95a22}
+.lines .line img{border-radius:6px;width:64px;height:64px;object-fit:cover}
+.lines .line span{display:block;color:var(--gold-hi)}
 .qty{display:flex;align-items:center;gap:.5rem}
 .qty button{width:28px;height:28px;border:1px solid var(--gold);border-radius:50%}
 .qty i{font-style:normal;min-width:1.2rem;text-align:center}
@@ -119,3 +119,45 @@ footer img{margin:0 auto .6rem;mix-blend-mode:screen}
   nav.open{max-height:220px;border-bottom:1px solid var(--gold)}
   nav a{padding:.9rem 0}
 }
+
+/* Bag rows (scoped so the .btn.line buttons are not affected) */
+.lines .line{grid-template-columns:64px 1fr auto;padding:.8rem 0}
+
+/* Collection pages */
+.pager{display:flex;justify-content:center;align-items:center;gap:.5rem;margin-top:2.4rem;flex-wrap:wrap}
+.pg{min-width:2.6rem;height:2.6rem;padding:0 .8rem;border:1px solid #d4a95a66;border-radius:99px;transition:all .25s}
+.pg:hover:not(:disabled){border-color:var(--gold)}
+.pg.on{background:var(--gold);color:var(--ink);border-color:var(--gold)}
+.pg:disabled{opacity:.35;cursor:default}
+.pg.arrow{font-size:1.4rem;line-height:1}
+.gap{color:#a08f7b}
+.prange{text-align:center;color:#a08f7b;font-size:.85rem;margin-top:.8rem}
+
+/* Bag summary on the contact form */
+.bagnote{border:1px dashed #d4a95a66;border-radius:8px;padding:.8rem 1rem;color:#dccdb8;font-size:.92rem}
+.bagnote span{color:var(--gold)}
+.bagnote ul{margin:.3rem 0;padding-left:1.1rem}
+.bagnote b{color:var(--gold-hi);font-weight:500}
+
+/* Floating "Order on WhatsApp" bar, shown while the bag has pieces */
+.orderbar{position:fixed;right:1.5rem;bottom:1.5rem;z-index:35;display:flex;align-items:center;gap:.8rem;padding:.35rem .35rem .35rem 1.2rem;background:var(--cocoa);border:1px solid var(--gold);border-radius:99px;box-shadow:0 12px 30px #000a;animation:barin .4s cubic-bezier(.2,.8,.2,1)}
+@keyframes barin{from{opacity:0;transform:translateY(24px)}}
+.ob-sum{white-space:nowrap;font-size:.95rem}
+.ob-sum b{color:var(--gold-hi);font-weight:500}
+:host(.has-bar) footer{padding-bottom:6rem}
+.toast{max-width:min(90vw,440px);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.toast.up{bottom:5.6rem}
+
+@media (max-width:600px){
+  .orderbar{left:1rem;right:1rem;bottom:1rem;justify-content:space-between}
+}
+
+/* Photo switcher on cards with several photos (e.g. light and dark background) */
+.shots{position:absolute;left:50%;bottom:.6rem;transform:translateX(-50%);display:flex;gap:.1rem;padding:.1rem .3rem;border-radius:99px;background:#0b0605a6;backdrop-filter:blur(4px)}
+.shots button{width:24px;height:24px;display:grid;place-items:center}
+.shots button::before{content:"";width:10px;height:10px;border-radius:50%;background:var(--cream);box-shadow:0 0 0 1px #d4a95a99;transition:box-shadow .2s,transform .2s}
+.shots button.dark::before{background:var(--cocoa)}
+.shots button.on::before{box-shadow:0 0 0 2px var(--gold);transform:scale(1.15)}
+/* Staged "real" photos (piece on a display box) get square dots */
+.shots button.real::before{border-radius:2px;background:#fff}
+.shots button.real.dark::before{background:#0d0705}

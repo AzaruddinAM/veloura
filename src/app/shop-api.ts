@@ -8,11 +8,21 @@ import { Injectable, inject } from '@angular/core';
  */
 export const API_URL = '/api';
 
+/** Studio photo on a light or dark background, or a staged photo on a white box / dark velvet box. */
+export type Theme = 'light' | 'dark' | 'real-white' | 'real-dark';
+export interface Photo { img: string; srcset?: string | null; thumb?: string | null; theme?: Theme; }
 export interface Product {
   id: number; name: string; cat: string; price: number; was: number; note: string;
+  /** Cover photo. */
   img: string; srcset?: string | null; thumb?: string | null;
+  /** All photos, cover first (e.g. the piece on a light and on a dark background). */
+  images?: Photo[];
 }
-export interface Catalogue { categories: string[]; products: Product[]; }
+export interface ShopSettings {
+  /** Photo shown first on cards: each product's cover, or its light / dark background version. */
+  photo_theme: 'cover' | Theme;
+}
+export interface Catalogue { categories: string[]; products: Product[]; settings?: ShopSettings; }
 
 @Injectable({ providedIn: 'root' })
 export class ShopApi {
@@ -20,5 +30,8 @@ export class ShopApi {
 
   catalogue() { return this.http.get<Catalogue>(`${API_URL}/catalogue`); }
   order(ref: string, items: { id: number; qty: number }[]) { return this.http.post(`${API_URL}/orders`, { ref, items }); }
-  enquiry(v: { name: string; phone: string; message: string }) { return this.http.post(`${API_URL}/enquiries`, v); }
+  /** Contact form; when the bag has pieces they are sent too and saved as an order. */
+  enquiry(v: { name: string; phone: string; message: string; ref?: string; items?: { id: number; qty: number }[] }) {
+    return this.http.post(`${API_URL}/enquiries`, v);
+  }
 }

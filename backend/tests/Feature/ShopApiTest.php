@@ -12,14 +12,15 @@ class ShopApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    /** A product with a dark cover photo and a second, light one. */
     private function product(array $attrs = []): Product
     {
         $cat = Category::firstOrCreate(['name' => $attrs['cat'] ?? 'Sets'], ['sort' => 1]);
         unset($attrs['cat']);
-        $p = new Product(['category_id' => $cat->id, 'name' => 'Lotus Pearl Set', 'note' => 'Pearl', 'price' => 1199, 'was_price' => 1699, 'is_active' => true, ...$attrs]);
-        $p->image_key = 'abc123';
-        $p->image_sizes = [160, 320, 480, 640];
-        $p->save();
+        $p = Product::create(['category_id' => $cat->id, 'name' => 'Lotus Pearl Set', 'note' => 'Pearl', 'price' => 1199, 'was_price' => 1699, 'is_active' => true, ...$attrs]);
+        $crop = ['x' => 0, 'y' => 0, 'size' => 1];
+        $p->photos()->create(['image_key' => 'abc123', 'image_sizes' => [160, 320, 480, 640], 'image_original' => 'o1.webp', 'image_crop' => $crop, 'theme' => 'dark', 'sort' => 0]);
+        $p->photos()->create(['image_key' => 'light1', 'image_sizes' => [160, 320], 'image_original' => 'o2.webp', 'image_crop' => $crop, 'theme' => 'light', 'sort' => 1]);
 
         return $p;
     }
@@ -42,16 +43,28 @@ class ShopApiTest extends TestCase
         $this->assertStringEndsWith('/media/products/abc123/640.webp', $p['img']);
         $this->assertStringEndsWith('/media/products/abc123/160.webp', $p['thumb']);
         $this->assertStringContainsString('/abc123/320.webp 320w', $p['srcset']);
+
+        // Every photo is listed with its light/dark label, cover first.
+        $this->assertSame(['dark', 'light'], array_column($p['images'], 'theme'));
+        $this->assertStringEndsWith('/light1/320.webp', $p['images'][1]['img']);
     }
 
-    public function test_catalogue_cache_is_cleared_when_a_product_changes(): void
+    public function test_products_without_photos_are_not_listed(): void
+    {
+        Product::create(['category_id' => Category::create(['name' => 'Sets'])->id, 'name' => 'No photo', 'price' => 1, 'was_price' => 1]);
+        $this->getJson('/api/catalogue')->assertJsonCount(0, 'products');
+    }
+
+    public function test_catalogue_cache_is_cleared_when_a_product_or_photo_changes(): void
     {
         $p = $this->product();
         $this->getJson('/api/catalogue')->assertJsonPath('products.0.price', 1199);
 
         $p->update(['price' => 999]);
-
         $this->getJson('/api/catalogue')->assertJsonPath('products.0.price', 999);
+
+        $p->photos()->first()->update(['theme' => 'light']);
+        $this->getJson('/api/catalogue')->assertJsonPath('products.0.images.0.theme', 'light');
     }
 
     public function test_catalogue_survives_a_real_serialising_cache_store(): void
@@ -106,5 +119,26 @@ class ShopApiTest extends TestCase
 
         $this->postJson('/api/enquiries', ['name' => 'A', 'phone' => '12', 'message' => 'hi'])
             ->assertUnprocessable()->assertJsonValidationErrors(['name', 'phone', 'message']);
+    }
+
+    public function test_enquiry_with_bag_items_saves_a_linked_order_with_customer_details(): void
+    {
+        $p = $this->product(['price' => 700]);
+
+        $this->postJson('/api/enquiries', [
+            'name' => 'Asha', 'phone' => '9876543210', 'message' => 'Can you gift wrap?',
+            'ref' => 'VL-CONTACT01', 'items' => [['id' => $p->id, 'qty' => 3]],
+        ])->assertCreated()->assertJsonPath('ref', 'VL-CONTACT01');
+
+        $order = Order::with('items')->firstOrFail();
+        $this->assertSame(['Asha', '9876543210', 2100, 'contact form'], [$order->customer_name, $order->phone, $order->total, $order->channel]);
+        $this->assertDatabaseHas('enquiries', ['name' => 'Asha', 'order_id' => $order->id]);
+
+        // Items without a reference are refused, and nothing is half-saved.
+        $this->postJson('/api/enquiries', ['name' => 'Ravi', 'phone' => '9876543210', 'message' => 'Hello there', 'items' => [['id' => $p->id, 'qty' => 1]]])
+            ->assertJsonValidationErrors('ref');
+        $this->postJson('/api/enquiries', ['name' => 'Ravi', 'phone' => '9876543210', 'message' => 'Hello there', 'ref' => 'VL-CONTACT02', 'items' => [['id' => 999, 'qty' => 1]]])
+            ->assertJsonValidationErrors('items.0.id');
+        $this->assertDatabaseMissing('enquiries', ['name' => 'Ravi']);
     }
 }

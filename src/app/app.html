@@ -47,28 +47,51 @@
     <h2 reveal>The collection</h2>
     <div class="chips" role="tablist">
       @for (c of cats(); track c) {
-        <button role="tab" [attr.aria-selected]="cat() === c" [class.on]="cat() === c" (click)="cat.set(c)">{{ c }}</button>
+        <button role="tab" [attr.aria-selected]="cat() === c" [class.on]="cat() === c" (click)="pick(c)">{{ c }}</button>
       }
     </div>
-    <div class="grid">
-      @for (p of shown(); track p.id; let i = $index) {
+    <div class="grid" (touchstart)="touchStart($event)" (touchend)="touchEnd($event)">
+      @for (p of paged(); track p.id; let i = $index) {
         <article class="card" reveal [style.--d]="(i % 4) * 70 + 'ms'">
           <div class="pic">
-            <img [attr.srcset]="p.srcset" sizes="(max-width: 600px) 92vw, (max-width: 900px) 46vw, 330px" [src]="p.img" [alt]="p.name" width="800" height="570" loading="lazy" decoding="async" />
-            <span class="off">{{ off(p) }}% off</span>
+            @let ph = photo(p);
+            <img [attr.srcset]="ph.srcset" sizes="(max-width: 600px) 92vw, (max-width: 900px) 46vw, 330px" [src]="ph.img" [alt]="p.name" width="800" height="570" loading="lazy" decoding="async" />
+            @if (p.images && p.images.length > 1) {
+              <div class="shots" role="group" [attr.aria-label]="'Photos of ' + p.name">
+                @for (s of p.images; track $index; let k = $index) {
+                  <button [class.on]="k === shotOf(p)" [class.dark]="s.theme === 'dark' || s.theme === 'real-dark'" [class.real]="s.theme === 'real-white' || s.theme === 'real-dark'" [attr.aria-pressed]="k === shotOf(p)"
+                          [attr.aria-label]="'Photo ' + (k + 1) + (s.theme ? ', ' + themeName(s.theme) : '')" (click)="show(p, k)"></button>
+                }
+              </div>
+            }
+            @if (off(p) > 0) { <span class="off">{{ off(p) }}% off</span> }
             <button class="heart" [class.on]="liked().has(p.id)" (click)="like(p.id)" [attr.aria-pressed]="liked().has(p.id)" aria-label="Save to wishlist">♥</button>
           </div>
           <div class="info">
             <h3>{{ p.name }}</h3>
             <p>{{ p.note }}</p>
             <div class="buy">
-              <span><b>{{ inr(p.price) }}</b> <s>{{ inr(p.was) }}</s></span>
+              <span><b>{{ inr(p.price) }}</b> @if (p.was > p.price) { <s>{{ inr(p.was) }}</s> }</span>
               <button class="btn gold sm" (click)="add(p)">Add to bag</button>
             </div>
           </div>
         </article>
       }
     </div>
+    @if (pages() > 1) {
+      <div class="pager" role="navigation" aria-label="Collection pages">
+        <button class="pg arrow" (click)="goPage(page() - 1)" [disabled]="page() === 1" aria-label="Previous page">‹</button>
+        @for (n of pageList(); track $index) {
+          @if (n === 0) {
+            <span class="gap">…</span>
+          } @else {
+            <button class="pg" [class.on]="n === page()" [attr.aria-current]="n === page() ? 'page' : null" (click)="goPage(n)" [attr.aria-label]="'Page ' + n">{{ n }}</button>
+          }
+        }
+        <button class="pg arrow" (click)="goPage(page() + 1)" [disabled]="page() === pages()" aria-label="Next page">›</button>
+      </div>
+      <p class="prange">Showing {{ range() }} pieces</p>
+    }
   </section>
 
   <section id="services" class="sec dark">
@@ -91,7 +114,7 @@
       @for (n of phones; track n.tel) {
         <a class="phone" [href]="'tel:' + n.tel">{{ n.label }}</a>
       }
-      <a class="btn line" [href]="'https://wa.me/918431360714'" target="_blank" rel="noopener">Chat on WhatsApp</a>
+      <a class="btn line" [href]="chatHref()" target="_blank" rel="noopener">Chat on WhatsApp</a>
     </div>
     <form class="c-form" [formGroup]="form" (ngSubmit)="send()" novalidate reveal>
       <label>Name
@@ -106,6 +129,15 @@
         <textarea rows="4" formControlName="message"></textarea>
         @if (form.controls.message.touched && form.controls.message.invalid) { <small>Write at least 5 characters.</small> }
       </label>
+      @if (bag().length) {
+        <div class="bagnote">
+          <span>Your bag will be added to the message</span>
+          <ul>
+            @for (l of bag(); track l.p.id) { <li>{{ l.p.name }} × {{ l.qty }}</li> }
+          </ul>
+          <b>Total {{ inr(total()) }}</b>
+        </div>
+      }
       <button class="btn gold" type="submit">Send on WhatsApp</button>
       @if (sent()) { <p class="ok" role="status">Opening WhatsApp. We will reply shortly.</p> }
     </form>
@@ -143,4 +175,11 @@
   }
 </aside>
 
-@if (toast()) { <div class="toast" role="status">{{ toast() }}</div> }
+@if (count() > 0 && !bagOpen()) {
+  <div class="orderbar" role="region" aria-label="Your bag">
+    <button class="ob-sum" (click)="bagOpen.set(true)" aria-label="Open bag"><b>{{ count() }}</b> {{ count() === 1 ? 'piece' : 'pieces' }} · {{ inr(total()) }}</button>
+    <button class="btn gold sm" (click)="checkout()">Order on WhatsApp</button>
+  </div>
+}
+
+@if (toast()) { <div class="toast" [class.up]="count() > 0 || bagOpen()" role="status">{{ toast() }}</div> }

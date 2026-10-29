@@ -55,16 +55,15 @@
             ]
           },
           "configurations": {
-            
             "production": {
               "optimization": {
-              "scripts": true,
-              "styles": {
-                "minify": true,
-                "inlineCritical": true
+                "scripts": true,
+                "styles": {
+                  "minify": true,
+                  "inlineCritical": true
+                },
+                "fonts": false
               },
-              "fonts": false
-            },
               "budgets": [
                 {
                   "type": "initial",
@@ -73,8 +72,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "10kB",
-                  "maximumError": "12kB"
+                  "maximumWarning": "16kB",
+                  "maximumError": "20kB"
                 }
               ],
               "outputHashing": "all"
@@ -98,6 +97,100 @@
             },
             "development": {
               "buildTarget": "veloura:build:development"
+            }
+          },
+          "defaultConfiguration": "development"
+        }
+      }
+    },
+    "adminpannel": {
+      "projectType": "application",
+      "schematics": {
+        "@schematics/angular:class": {
+          "skipTests": true
+        },
+        "@schematics/angular:component": {
+          "skipTests": true
+        },
+        "@schematics/angular:directive": {
+          "skipTests": true
+        },
+        "@schematics/angular:guard": {
+          "skipTests": true
+        },
+        "@schematics/angular:interceptor": {
+          "skipTests": true
+        },
+        "@schematics/angular:pipe": {
+          "skipTests": true
+        },
+        "@schematics/angular:resolver": {
+          "skipTests": true
+        },
+        "@schematics/angular:service": {
+          "skipTests": true
+        }
+      },
+      "root": "projects/adminpannel",
+      "sourceRoot": "projects/adminpannel/src",
+      "prefix": "adm",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "browser": "projects/adminpannel/src/main.ts",
+            "tsConfig": "projects/adminpannel/tsconfig.app.json",
+            "baseHref": "/adminpannel/",
+            "outputPath": {
+              "base": "backend/public/adminpannel",
+              "browser": ""
+            },
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "projects/adminpannel/public"
+              }
+            ],
+            "styles": [
+              "projects/adminpannel/src/styles.css"
+            ]
+          },
+          "configurations": {
+            "production": {
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "600kB",
+                  "maximumError": "1MB"
+                },
+                {
+                  "type": "anyComponentStyle",
+                  "maximumWarning": "8kB",
+                  "maximumError": "16kB"
+                }
+              ],
+              "outputHashing": "all"
+            },
+            "development": {
+              "optimization": false,
+              "extractLicenses": false,
+              "sourceMap": true
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "proxyConfig": "proxy.conf.json",
+            "port": 4400
+          },
+          "configurations": {
+            "production": {
+              "buildTarget": "adminpannel:build:production"
+            },
+            "development": {
+              "buildTarget": "adminpannel:build:development"
             }
           },
           "defaultConfiguration": "development"
