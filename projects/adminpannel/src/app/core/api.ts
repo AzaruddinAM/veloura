@@ -47,6 +47,8 @@ export interface Photo {
 export interface Product {
   id: number; category_id: number; category: string; name: string; note: string;
   price: number; was_price: number; is_active: boolean; sort: number;
+  /** Pieces in stock; null = not tracked (no limit). */
+  stock: number | null;
   /** Photo types shown in the shop for this product; null follows the shop setting. */
   themes: Theme[] | null;
   /** Cover photo (the first of `photos`). */
@@ -62,7 +64,7 @@ export interface Enquiry {
 export interface Dashboard {
   stats: {
     pending_orders: number; orders_today: number; orders_month: number; sales_month: number;
-    unread_enquiries: number; active_products: number; hidden_products: number;
+    unread_enquiries: number; active_products: number; hidden_products: number; low_stock: number;
   };
   days: { date: string; label: string; orders: number; total: number }[];
   top_products: { name: string; qty: number; total: number }[];
@@ -92,7 +94,7 @@ export class Api {
 
   products() { return this.http.get<Product[]>(`${API}/products`); }
   saveProduct(id: number | null, body: FormData) { return this.http.post<Product>(id ? `${API}/products/${id}` : `${API}/products`, body); }
-  patchProduct(id: number, body: Partial<Pick<Product, 'is_active' | 'sort' | 'price'>>) { return this.http.patch<Product>(`${API}/products/${id}`, body); }
+  patchProduct(id: number, body: Partial<Pick<Product, 'is_active' | 'sort' | 'price' | 'stock'>>) { return this.http.patch<Product>(`${API}/products/${id}`, body); }
   deleteProduct(id: number) { return this.http.delete(`${API}/products/${id}`); }
 
   addPhoto(productId: number, body: FormData) { return this.http.post<Product>(`${API}/products/${productId}/photos`, body); }

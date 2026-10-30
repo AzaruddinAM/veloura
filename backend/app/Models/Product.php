@@ -9,16 +9,21 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\Cache;
 
-#[Fillable(['category_id', 'name', 'note', 'price', 'was_price', 'is_active', 'sort', 'themes'])]
+#[Fillable(['category_id', 'name', 'note', 'price', 'was_price', 'stock', 'is_active', 'sort', 'themes'])]
 class Product extends Model
 {
-    public const CATALOGUE_CACHE_KEY = 'catalogue.v3';
+    public const CATALOGUE_CACHE_KEY = 'catalogue.v4';
+
+    /** At or below this many pieces a product counts as low on stock. */
+    public const LOW_STOCK = 3;
 
     protected function casts(): array
     {
         return [
             'price' => 'integer',
             'was_price' => 'integer',
+            // Pieces in stock; null = not tracked (no limit).
+            'stock' => 'integer',
             'is_active' => 'boolean',
             // Photo types this product shows, e.g. ["light","real-white"]; null follows the shop setting.
             'themes' => 'array',
@@ -34,6 +39,22 @@ class Product extends Model
     public static function forgetCatalogue(): void
     {
         Cache::forget(self::CATALOGUE_CACHE_KEY);
+    }
+
+    public function takeStock(int $qty): void
+    {
+        if ($this->stock !== null) {
+            $this->stock = max(0, $this->stock - $qty);
+            $this->save();
+        }
+    }
+
+    public function returnStock(int $qty): void
+    {
+        if ($this->stock !== null) {
+            $this->stock += $qty;
+            $this->save();
+        }
     }
 
     public function category(): BelongsTo
@@ -96,6 +117,7 @@ class Product extends Model
             'was_price' => $this->was_price,
             'is_active' => $this->is_active,
             'sort' => $this->sort,
+            'stock' => $this->stock,
             'themes' => $this->themes,
             ...$this->imageSet(),
             'photos' => $this->photos->map->toAdmin()->values(),

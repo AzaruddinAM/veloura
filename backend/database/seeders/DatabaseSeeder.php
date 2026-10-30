@@ -89,6 +89,8 @@ class DatabaseSeeder extends Seeder
                 'note' => $note,
                 'price' => $price,
                 'was_price' => $was,
+                // Starting stock; set the real numbers in the admin panel.
+                'stock' => 10,
                 'sort' => $i + 1,
                 'is_active' => true,
             ]);

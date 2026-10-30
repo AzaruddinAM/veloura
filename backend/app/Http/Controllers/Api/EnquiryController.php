@@ -21,14 +21,14 @@ class EnquiryController extends Controller
             'name' => ['required', 'string', 'min:2', 'max:80'],
             'phone' => ['required', 'string', 'regex:/^[+]?[0-9 ]{10,14}$/'],
             'message' => ['required', 'string', 'min:5', 'max:2000'],
-            'ref' => ['required_with:items', ...Order::BAG_RULES['ref']],
+            'ref' => Order::BAG_RULES['ref'],
             'items' => ['nullable', ...Order::BAG_RULES['items']],
             'items.*.id' => Order::BAG_RULES['items.*.id'],
             'items.*.qty' => Order::BAG_RULES['items.*.qty'],
         ]);
 
         $enquiry = DB::transaction(function () use ($data, $request) {
-            $order = empty($data['items']) ? null : Order::place($data['ref'], $data['items'], [
+            $order = empty($data['items']) ? null : Order::place($data['ref'] ?? null, $data['items'], [
                 'customer_name' => $data['name'],
                 'phone' => $data['phone'],
                 'note' => $data['message'],
@@ -45,6 +45,7 @@ class EnquiryController extends Controller
             ]);
         });
 
-        return response()->json(['id' => $enquiry->id, 'ref' => $enquiry->order?->ref], 201);
+        // With a bag: the order's reference and confirmed lines, for the WhatsApp message.
+        return response()->json(['id' => $enquiry->id, ...($enquiry->order ? OrderController::summary($enquiry->order) : ['ref' => null])], 201);
     }
 }

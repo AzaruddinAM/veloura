@@ -180,11 +180,59 @@ class ShopApiTest extends TestCase
         $this->assertSame(['Asha', '9876543210', 2100, 'contact form'], [$order->customer_name, $order->phone, $order->total, $order->channel]);
         $this->assertDatabaseHas('enquiries', ['name' => 'Asha', 'order_id' => $order->id]);
 
-        // Items without a reference are refused, and nothing is half-saved.
-        $this->postJson('/api/enquiries', ['name' => 'Ravi', 'phone' => '9876543210', 'message' => 'Hello there', 'items' => [['id' => $p->id, 'qty' => 1]]])
-            ->assertJsonValidationErrors('ref');
-        $this->postJson('/api/enquiries', ['name' => 'Ravi', 'phone' => '9876543210', 'message' => 'Hello there', 'ref' => 'VL-CONTACT02', 'items' => [['id' => 999, 'qty' => 1]]])
+        // Without a reference the server makes one, and answers with the confirmed lines.
+        $this->postJson('/api/enquiries', ['name' => 'Meena', 'phone' => '9876543210', 'message' => 'Hello there', 'items' => [['id' => $p->id, 'qty' => 1]]])
+            ->assertCreated()->assertJsonPath('ref', fn ($r) => (bool) preg_match('/^VL-[A-Z0-9]{8}$/', $r))
+            ->assertJsonPath('items.0.line_total', 700)->assertJsonPath('total', 700);
+
+        // A bad item refuses the whole message: nothing is half-saved.
+        $this->postJson('/api/enquiries', ['name' => 'Ravi', 'phone' => '9876543210', 'message' => 'Hello there', 'items' => [['id' => 999, 'qty' => 1]]])
             ->assertJsonValidationErrors('items.0.id');
         $this->assertDatabaseMissing('enquiries', ['name' => 'Ravi']);
+    }
+
+    public function test_orders_cannot_exceed_stock_and_take_it(): void
+    {
+        $p = $this->product(['name' => 'Lotus', 'stock' => 3]);
+        $free = $this->product(['name' => 'Untracked', 'stock' => null]);
+
+        // More than in stock: refused with a clear message, nothing saved or taken.
+        $this->postJson('/api/orders', ['items' => [['id' => $p->id, 'qty' => 4]]])
+            ->assertUnprocessable()->assertJsonPath('errors', ['items.0.qty' => ['Only 3 left of Lotus.']]);
+        $this->assertSame(0, Order::count());
+        $this->assertSame(3, $p->fresh()->stock);
+
+        // Within stock: saved, server reference, confirmed lines, stock taken.
+        $this->postJson('/api/orders', ['items' => [['id' => $p->id, 'qty' => 2], ['id' => $free->id, 'qty' => 50]]])
+            ->assertCreated()
+            ->assertJsonPath('ref', fn ($r) => (bool) preg_match('/^VL-[A-Z0-9]{8}$/', $r))
+            ->assertJsonPath('items.0', ['id' => $p->id, 'name' => 'Lotus', 'price' => 1199, 'qty' => 2, 'line_total' => 2398])
+            ->assertJsonPath('total', 2398 + 50 * 1199);
+        $this->assertSame(1, $p->fresh()->stock);
+        $this->assertNull($free->fresh()->stock, 'untracked stock stays untracked');
+
+        // The catalogue shows the new stock straight away.
+        $this->getJson('/api/catalogue')->assertJsonPath('products.0.stock', 1);
+
+        // One bad line refuses the whole bag; the good line is not taken either.
+        $this->postJson('/api/orders', ['items' => [['id' => $free->id, 'qty' => 1], ['id' => $p->id, 'qty' => 2]]])
+            ->assertJsonValidationErrors('items.1.qty');
+        $this->assertSame(1, $p->fresh()->stock);
+        $this->assertSame(1, Order::count());
+
+        // Last piece, then sold out.
+        $this->postJson('/api/orders', ['items' => [['id' => $p->id, 'qty' => 1]]])->assertCreated();
+        $this->postJson('/api/orders', ['items' => [['id' => $p->id, 'qty' => 1]]])
+            ->assertJsonPath('errors', ['items.0.qty' => ['Lotus is sold out.']]);
+        $this->assertSame(0, $p->fresh()->stock);
+    }
+
+    public function test_contact_form_bag_also_respects_stock(): void
+    {
+        $p = $this->product(['name' => 'Lotus', 'stock' => 1]);
+        $this->postJson('/api/enquiries', ['name' => 'Asha', 'phone' => '9876543210', 'message' => 'Gift wrap please', 'items' => [['id' => $p->id, 'qty' => 2]]])
+            ->assertJsonValidationErrors('items.0.qty');
+        $this->assertDatabaseMissing('enquiries', ['name' => 'Asha']);
+        $this->assertSame(1, $p->fresh()->stock);
     }
 }

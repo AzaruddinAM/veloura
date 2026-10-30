@@ -48,6 +48,7 @@ import { Toasts, inr } from '../core/ui';
               <a [routerLink]="['/products', p.id]" class="nm">{{ p.name }}</a>
               <span class="muted small">{{ p.category }} · order {{ p.sort }}</span>
               <span class="price"><b>{{ inr(p.price) }}</b> @if (p.was_price > p.price) { <s>{{ inr(p.was_price) }}</s> }</span>
+              <span class="stock" [class.low]="isLow(p)" [class.out]="p.stock === 0">{{ p.stock === null ? 'Stock not tracked' : p.stock === 0 ? 'Sold out' : p.stock + ' in stock' }}</span>
               <div class="foot">
                 <label class="row small" [title]="p.is_active ? 'Shown on the website' : 'Hidden from the website'">
                   <span class="switch"><input type="checkbox" [checked]="p.is_active" (change)="toggle(p, $any($event.target).checked)" [attr.aria-label]="'Show ' + p.name + ' on the website'" /><i></i></span>
@@ -86,6 +87,9 @@ import { Toasts, inr } from '../core/ui';
     .nm{color:var(--cream);font:600 1.15rem/1.2 var(--serif)}
     .price b{color:var(--gold-hi);font-weight:500}
     .price s{color:var(--muted);font-size:.85rem;margin-left:.3rem}
+    .stock{font-size:.82rem;color:var(--muted)}
+    .stock.low{color:var(--warn)}
+    .stock.out{color:var(--bad)}
     .foot{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem;padding-top:.6rem;border-top:1px solid var(--line)}
     .pager .btn{min-width:2.4rem}
     .range{text-align:center;margin-top:.5rem}
@@ -102,7 +106,9 @@ export class ProductsPage {
   private api = inject(Api);
   private toasts = inject(Toasts);
   readonly inr = inr;
-  readonly shows = [{ v: 'all', label: 'All' }, { v: 'on', label: 'On sale' }, { v: 'off', label: 'Hidden' }];
+  readonly shows = [{ v: 'all', label: 'All' }, { v: 'on', label: 'On sale' }, { v: 'off', label: 'Hidden' }, { v: 'low', label: 'Low stock' }];
+  /** 3 pieces or fewer (stock tracked). */
+  isLow(p: Product) { return p.stock !== null && p.stock <= 3; }
 
   readonly all = signal<Product[]>([]);
   readonly loading = signal(true);
@@ -119,7 +125,7 @@ export class ProductsPage {
     return this.all().filter(p =>
       (!q || p.name.toLowerCase().includes(q) || p.note.toLowerCase().includes(q)) &&
       (!this.cat() || p.category === this.cat()) &&
-      (this.show() === 'all' || (this.show() === 'on') === p.is_active));
+      (this.show() === 'all' || (this.show() === 'low' ? this.isLow(p) : (this.show() === 'on') === p.is_active)));
   });
 
   // Pages: 6 per page on phones (2 per row), 12 on bigger screens.

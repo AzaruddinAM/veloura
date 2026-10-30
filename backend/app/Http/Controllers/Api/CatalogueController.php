@@ -47,6 +47,8 @@ class CatalogueController extends Controller
                         'price' => $p->price,
                         'was' => $p->was_price,
                         'note' => $p->note,
+                    // Pieces in stock (null = not tracked); the site limits the bag to this.
+                    'stock' => $p->stock,
                         // First shown photo at the top level (the bag uses it) ...
                         ...$photos->first()->set(),
                         // ... and every shown photo; with one, cards have no photo switcher.

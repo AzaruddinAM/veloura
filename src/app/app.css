@@ -161,3 +161,8 @@ footer img{margin:0 auto .6rem;mix-blend-mode:screen}
 /* Staged "real" photos (piece on a display box) get square dots */
 .shots button.real::before{border-radius:2px;background:#fff}
 .shots button.real.dark::before{background:#0d0705}
+
+/* Stock: sold-out and limit buttons, "Only N left" hint */
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+.qty button:disabled{opacity:.35;cursor:not-allowed}
+.left{font-style:normal;color:var(--gold-hi)}

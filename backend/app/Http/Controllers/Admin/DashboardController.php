@@ -63,6 +63,8 @@ class DashboardController extends Controller
                 'unread_enquiries' => Enquiry::where('is_read', false)->count(),
                 'active_products' => Product::where('is_active', true)->count(),
                 'hidden_products' => Product::where('is_active', false)->count(),
+                // Products on sale with 3 pieces or fewer left (stock tracked).
+                'low_stock' => Product::where('is_active', true)->whereNotNull('stock')->where('stock', '<=', Product::LOW_STOCK)->count(),
             ],
             'days' => $days,
             'top_products' => $top,

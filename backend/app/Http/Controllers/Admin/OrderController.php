@@ -7,6 +7,7 @@ use App\Models\Enquiry;
 use App\Models\Order;
 use App\Models\OrderItem;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class OrderController extends Controller
@@ -54,20 +55,39 @@ class OrderController extends Controller
 
     public function update(Request $request, Order $order)
     {
-        $order->update($request->validate([
+        $data = $request->validate([
             'status' => ['sometimes', 'required', Rule::in(Order::STATUSES)],
             'customer_name' => ['sometimes', 'nullable', 'string', 'max:80'],
             'phone' => ['sometimes', 'nullable', 'string', 'max:20'],
             'address' => ['sometimes', 'nullable', 'string', 'max:500'],
             'note' => ['sometimes', 'nullable', 'string', 'max:500'],
-        ]));
+        ]);
+
+        DB::transaction(function () use ($order, $data) {
+            // Stock follows the order: cancelling puts its pieces back; re-opening a
+            // cancelled order takes them again (refused when there is not enough).
+            $was = $order->status;
+            $now = $data['status'] ?? $was;
+            if ($was !== 'cancelled' && $now === 'cancelled') {
+                $order->releaseStock();
+            } elseif ($was === 'cancelled' && $now !== 'cancelled') {
+                $order->reserveStock();
+            }
+            $order->update($data);
+        });
 
         return $this->show($order);
     }
 
     public function destroy(Order $order)
     {
-        $order->delete();
+        DB::transaction(function () use ($order) {
+            // Pieces that have not left the shop go back into stock.
+            if (in_array($order->status, Order::NOT_SENT, true)) {
+                $order->releaseStock();
+            }
+            $order->delete();
+        });
 
         return response()->noContent();
     }

@@ -69,10 +69,14 @@
           </div>
           <div class="info">
             <h3>{{ p.name }}</h3>
-            <p>{{ p.note }}</p>
+            <p>{{ p.note }}@if (left(p); as n) { <em class="left"> · Only {{ n }} left</em> }</p>
             <div class="buy">
               <span><b>{{ inr(p.price) }}</b> @if (p.was > p.price) { <s>{{ inr(p.was) }}</s> }</span>
-              <button class="btn gold sm" (click)="add(p)">Add to bag</button>
+              @if (p.stock === 0) {
+                <button class="btn gold sm" disabled>Sold out</button>
+              } @else {
+                <button class="btn gold sm" (click)="add(p)">Add to bag</button>
+              }
             </div>
           </div>
         </article>
@@ -138,7 +142,7 @@
           <b>Total {{ inr(total()) }}</b>
         </div>
       }
-      <button class="btn gold" type="submit">Send on WhatsApp</button>
+      <button class="btn gold" type="submit" [disabled]="placing()">{{ placing() ? 'Sending…' : 'Send on WhatsApp' }}</button>
       @if (sent()) { <p class="ok" role="status">Opening WhatsApp. We will reply shortly.</p> }
     </form>
   </section>
@@ -160,7 +164,7 @@
         <img [src]="l.p.thumb || l.p.img" [alt]="l.p.name" width="64" height="64" decoding="async" />
         <div><b>{{ l.p.name }}</b><span>{{ inr(l.p.price) }}</span></div>
         <div class="qty">
-          <button (click)="step(l.p.id, -1)" aria-label="Fewer">−</button><i>{{ l.qty }}</i><button (click)="step(l.p.id, 1)" aria-label="More">+</button>
+          <button (click)="step(l.p.id, -1)" aria-label="Fewer">−</button><i>{{ l.qty }}</i><button (click)="step(l.p.id, 1)" [disabled]="l.qty >= maxQty(l.p)" aria-label="More">+</button>
         </div>
       </div>
     } @empty {
@@ -170,7 +174,7 @@
   @if (bag().length) {
     <div class="df">
       <p><span>Total</span><b>{{ inr(total()) }}</b></p>
-      <button class="btn gold" (click)="checkout()">Order on WhatsApp</button>
+      <button class="btn gold" (click)="checkout()" [disabled]="placing()">{{ placing() ? 'Placing order…' : 'Order on WhatsApp' }}</button>
     </div>
   }
 </aside>
@@ -178,7 +182,7 @@
 @if (count() > 0 && !bagOpen()) {
   <div class="orderbar" role="region" aria-label="Your bag">
     <button class="ob-sum" (click)="bagOpen.set(true)" aria-label="Open bag"><b>{{ count() }}</b> {{ count() === 1 ? 'piece' : 'pieces' }} · {{ inr(total()) }}</button>
-    <button class="btn gold sm" (click)="checkout()">Order on WhatsApp</button>
+    <button class="btn gold sm" (click)="checkout()" [disabled]="placing()">{{ placing() ? 'Placing order…' : 'Order on WhatsApp' }}</button>
   </div>
 }
 

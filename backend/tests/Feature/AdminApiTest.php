@@ -285,6 +285,58 @@ class AdminApiTest extends TestCase
             ->assertOk()->assertJsonPath('themes', null);
     }
 
+    public function test_order_status_and_delete_keep_stock_right(): void
+    {
+        $p = $this->product(['stock' => 5]);
+        Sanctum::actingAs($this->admin());
+        $order = Order::place(null, [['id' => $p->id, 'qty' => 3]]);
+        $this->assertSame(2, $p->fresh()->stock);
+
+        // Cancelling puts the pieces back; cancelling again changes nothing.
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled'])->assertOk();
+        $this->assertSame(5, $p->fresh()->stock);
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled', 'note' => 'x'])->assertOk();
+        $this->assertSame(5, $p->fresh()->stock);
+
+        // Re-opening takes them again.
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'confirmed'])->assertOk();
+        $this->assertSame(2, $p->fresh()->stock);
+
+        // Re-opening is refused when the pieces were sold meanwhile; the order stays cancelled.
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'cancelled'])->assertOk();
+        Order::place(null, [['id' => $p->id, 'qty' => 4]]);
+        $this->patchJson("/api/admin/orders/{$order->id}", ['status' => 'pending'])
+            ->assertJsonValidationErrors(['status' => 'Only 1 left of Lotus.']);
+        $this->assertSame('cancelled', $order->fresh()->status);
+        $this->assertSame(1, $p->fresh()->stock);
+
+        // Deleting a pending order returns its pieces; a delivered one does not.
+        $pending = Order::place(null, [['id' => $p->id, 'qty' => 1]]);
+        $this->deleteJson("/api/admin/orders/{$pending->id}")->assertNoContent();
+        $this->assertSame(1, $p->fresh()->stock);
+        $sent = Order::place(null, [['id' => $p->id, 'qty' => 1]]);
+        $sent->update(['status' => 'delivered']);
+        $this->deleteJson("/api/admin/orders/{$sent->id}")->assertNoContent();
+        $this->assertSame(0, $p->fresh()->stock);
+    }
+
+    public function test_admin_sets_stock_and_sees_low_stock(): void
+    {
+        Sanctum::actingAs($this->admin());
+        $p = $this->product(['stock' => 10]);
+        $body = ['category_id' => $p->category_id, 'name' => 'Lotus', 'price' => 1000, 'was_price' => 1500, 'is_active' => '1'];
+
+        $this->post("/api/admin/products/{$p->id}", [...$body, 'stock' => 2], ['Accept' => 'application/json'])->assertJsonPath('stock', 2);
+        $this->post("/api/admin/products/{$p->id}", [...$body, 'stock' => -1], ['Accept' => 'application/json'])->assertJsonValidationErrors('stock');
+        $this->getJson('/api/admin/dashboard')->assertJsonPath('stats.low_stock', 1);
+
+        // Empty = not tracked; quick edit from the list.
+        $this->post("/api/admin/products/{$p->id}", [...$body, 'stock' => ''], ['Accept' => 'application/json'])->assertJsonPath('stock', null);
+        $this->patchJson("/api/admin/products/{$p->id}", ['stock' => 7])->assertJsonPath('stock', 7);
+        $this->patchJson("/api/admin/products/{$p->id}", ['stock' => 'lots'])->assertJsonValidationErrors('stock');
+        $this->getJson('/api/admin/dashboard')->assertJsonPath('stats.low_stock', 0);
+    }
+
     public function test_password_change_requires_current_password(): void
     {
         Sanctum::actingAs($this->admin());

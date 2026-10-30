@@ -168,7 +168,7 @@ export class DashboardPage {
       { label: 'Orders today', value: s?.orders_today ?? 0, sub: `${s?.orders_month ?? 0} this month`, link: '/orders', query: {} },
       { label: 'Sales this month', value: inr(s?.sales_month), sub: 'Confirmed, shipped and delivered', link: '/orders', query: { status: 'delivered' } },
       { label: 'Unread enquiries', value: s?.unread_enquiries ?? 0, sub: 'Messages from the contact form', link: '/enquiries', query: {} },
-      { label: 'Products on sale', value: s?.active_products ?? 0, sub: `${s?.hidden_products ?? 0} hidden`, link: '/products', query: {} },
+      { label: 'Products on sale', value: s?.active_products ?? 0, sub: `${s?.hidden_products ?? 0} hidden · ${s?.low_stock ?? 0} low on stock`, link: '/products', query: {} },
     ];
   });
 

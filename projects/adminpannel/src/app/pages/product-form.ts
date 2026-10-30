@@ -67,6 +67,13 @@ const ACCEPT = /^image\/(jpeg|png|webp|avif|gif)$/;
               @else if (discount() > 0) { <small class="hint">Shows as {{ discount() }}% off.</small> }
               @else if (f.price && f.was_price && f.was_price < f.price) { <small class="err">MRP must be the same or higher than the selling price.</small> }
             </label>
+            <label class="field"><span>Stock (pieces)</span>
+              <input type="number" name="stock" [(ngModel)]="f.stock" min="0" inputmode="numeric" placeholder="Not tracked" />
+              @if (errs()['stock']) { <small class="err">{{ errs()['stock'] }}</small> }
+              @else if (f.stock === 0) { <small class="err">Sold out: customers cannot order it.</small> }
+              @else if (f.stock != null) { <small class="hint">Customers can order up to {{ f.stock }}. Orders take pieces out; cancelling puts them back.</small> }
+              @else { <small class="hint">Empty = stock not tracked, no limit.</small> }
+            </label>
           </div>
           <label class="row onsale">
             <span class="switch"><input type="checkbox" name="is_active" [(ngModel)]="f.is_active" /><i></i></span>
@@ -216,7 +223,7 @@ export class ProductFormPage {
   readonly photoErrors = computed(() => Object.entries(this.errs()).filter(([k]) => k.startsWith('photo') || k === 'image' || k === 'theme' || k.startsWith('crop')).map(([, v]) => v));
 
   // themes: photo types shown in the shop; empty follows the shop setting.
-  f = { name: '', note: '', category_id: null as number | null, sort: 0, price: null as number | null, was_price: null as number | null, is_active: true, themes: [] as Theme[] };
+  f = { name: '', note: '', category_id: null as number | null, sort: 0, price: null as number | null, was_price: null as number | null, stock: null as number | null, is_active: true, themes: [] as Theme[] };
 
   // New product: photos wait here until "Add product".
   readonly pending = signal<Pending[]>([]);
@@ -251,7 +258,7 @@ export class ProductFormPage {
           const p = list.find(x => x.id === +id);
           if (!p) { this.loadError.set('This product does not exist any more.'); return; }
           this.product.set(p);
-          this.f = { name: p.name, note: p.note, category_id: p.category_id, sort: p.sort, price: p.price, was_price: p.was_price, is_active: p.is_active, themes: p.themes ?? [] };
+          this.f = { name: p.name, note: p.note, category_id: p.category_id, sort: p.sort, price: p.price, was_price: p.was_price, stock: p.stock, is_active: p.is_active, themes: p.themes ?? [] };
         },
         error: e => this.loadError.set(errorText(e)),
       });
@@ -409,6 +416,7 @@ export class ProductFormPage {
     body.append('sort', String(f.sort ?? 0));
     body.append('price', String(f.price ?? ''));
     body.append('was_price', String(f.was_price ?? ''));
+    body.append('stock', f.stock === null || (f.stock as unknown) === '' ? '' : String(f.stock));
     body.append('is_active', f.is_active ? '1' : '0');
     // An empty value clears the choice (follow the shop setting).
     if (f.themes.length) f.themes.forEach(t => body.append('themes[]', t));

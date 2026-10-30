@@ -65,13 +65,14 @@ class ProductController extends Controller
         return $this->fresh($product);
     }
 
-    /** Quick changes from the list: show/hide, display order, price. */
+    /** Quick changes from the list: show/hide, display order, price, stock. */
     public function patch(Request $request, Product $product)
     {
         $product->update($request->validate([
             'is_active' => ['sometimes', 'boolean'],
             'sort' => ['sometimes', 'integer', 'min:0', 'max:65535'],
             'price' => ['sometimes', 'integer', 'min:1', 'max:10000000', 'lte:'.$product->was_price],
+            'stock' => ['sometimes', 'nullable', 'integer', 'min:0', 'max:100000'],
         ]));
 
         return $this->fresh($product);
@@ -163,6 +164,8 @@ class ProductController extends Controller
             'note' => ['nullable', 'string', 'max:160'],
             'price' => ['required', 'integer', 'min:1', 'max:10000000'],
             'was_price' => ['required', 'integer', 'gte:price', 'max:10000000'],
+            // Pieces in stock; empty = not tracked (no limit).
+            'stock' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'sort' => ['nullable', 'integer', 'min:0', 'max:65535'],
             'is_active' => ['nullable', 'boolean'],
             // Photo types shown in the shop; empty follows the shop setting.
@@ -190,6 +193,7 @@ class ProductController extends Controller
             'note' => $data['note'] ?? '',
             'price' => $data['price'],
             'was_price' => $data['was_price'],
+            'stock' => $data['stock'] ?? null,
             'sort' => $data['sort'] ?? 0,
             'is_active' => $request->boolean('is_active', true),
             // None chosen = follow the shop setting.

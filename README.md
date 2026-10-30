@@ -39,6 +39,7 @@ Online shop for Veloura stainless steel AD jewellery. Three parts, all free and 
 - **Orders:**
   - Filter by status and search by reference, name or phone.
   - On each order: change its status (Pending → Confirmed → Shipped → Delivered, or Cancelled), save the customer's address, message the customer on WhatsApp, or print.
+- **Stock:** each product has a stock number (Products › Edit › "Stock (pieces)"; empty = not tracked). Customers can't order more than is in stock (the server checks every order), sold-out pieces show "Sold out", and 3 or fewer show "Only N left". Orders take pieces out of stock; cancelling (or deleting a pending/confirmed order) puts them back.
 - **Products:**
   - Add, edit, hide or show, and delete products.
   - Photo cropper: drag, zoom or pinch to choose the square customers see, with live previews. You can re-crop an existing product at any time, because the full original photo is kept.
