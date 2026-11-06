@@ -1,19 +1,22 @@
 # Tests, builds and deploys Veloura to Hostinger on every push to main.
 #
-# Only files whose content changed are uploaded (and files removed from the build
-# are removed from the server). The first run uploads everything once; after that
-# each deploy sends just the difference. Never touched on the server:
-#   public_html/media/   product photos uploaded in the admin panel
-#   veloura/.env         your settings
-#   veloura/storage/     logs, sessions, cache
+# Only changed files are replaced. The workflow builds the version that is live
+# (the commit saved on the server in veloura/.deployed-commit) and the new version,
+# compares the two builds file by file, then over FTP:
+#   - uploads only files that are new or different
+#   - deletes only files the new version no longer has
+#   - leaves every other file on the server as it is
+# Never touched: public_html/media/ (product photos), veloura/.env, veloura/storage/.
 #
 # Needs these repository secrets (Settings > Secrets and variables > Actions):
-#   FTP_SERVER     e.g. ftp.velourajewels.online (hPanel > Files > FTP Accounts)
-#   FTP_USERNAME   e.g. u123456789.velourajewels.online
+#   FTP_SERVER     ftp.velourajewels.online or the server IP (hPanel > Files > FTP Accounts)
+#   FTP_USERNAME
 #   FTP_PASSWORD
-# Optional repository variables, if your FTP account opens in a different folder:
+# Optional repository variables:
 #   FTP_PUBLIC_DIR (default: domains/velourajewels.online/public_html/)
 #   FTP_APP_DIR    (default: domains/velourajewels.online/veloura/)
+#   DEPLOY_BASE    commit that is live when the server has no veloura/.deployed-commit yet
+#                  (default: 46b55e3, the version uploaded by hand on 2 Nov 2026)
 
 name: Deploy to Hostinger
 
@@ -34,6 +37,7 @@ concurrency:
 env:
   PUBLIC_DIR: ${{ vars.FTP_PUBLIC_DIR || 'domains/velourajewels.online/public_html/' }}
   APP_DIR: ${{ vars.FTP_APP_DIR || 'domains/velourajewels.online/veloura/' }}
+  DEPLOY_BASE: ${{ vars.DEPLOY_BASE || '46b55e3a9d9bae4774d2ca3401b168070feb4ffa' }}
 
 jobs:
   test:
@@ -58,117 +62,93 @@ jobs:
           php artisan test
 
   deploy:
-    name: Build and upload changed files
+    name: Upload changed files
     needs: test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-
-      # ---------- Build ----------
+        with:
+          fetch-depth: 0 # full history, to build the live version too
       - uses: actions/setup-node@v5
         with:
           node-version: 22
           cache: npm
-      - name: Build shop and admin panel
-        run: |
-          npm ci
-          npm run build
-          npm run build:admin
-
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
           coverage: none
-      - name: Install PHP packages (production)
-        working-directory: backend
-        run: composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist --no-progress
+      - name: Install lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp > /dev/null
 
-      # ---------- Same layout as the Hostinger package ----------
-      - name: Assemble upload folders
-        run: |
-          set -e
-          mkdir -p out/public_html out/veloura
-
-          # public_html: shop + admin panel + entry point that loads ../veloura
-          cp -r dist/veloura/browser/. out/public_html/
-          cp -r backend/public/adminpannel out/public_html/adminpannel
-          cp backend/public/.htaccess backend/public/robots.txt backend/public/favicon.ico out/public_html/
-          cp deploy/hostinger/index.php out/public_html/index.php
-
-          # veloura: backend code only (no settings, storage, tests or dev files)
-          rsync -a backend/ out/veloura/ \
-            --exclude '.env' --exclude '.env.*' \
-            --exclude 'storage/' --exclude 'public/' --exclude 'tests/' \
-            --exclude 'node_modules/' --exclude 'bootstrap/cache/*.php' \
-            --exclude 'resources/css/' --exclude 'resources/js/' \
-            --exclude 'package.json' --exclude 'vite.config.js' --exclude 'phpunit.xml' \
-            --exclude '.phpunit.result.cache' --exclude '*.md' \
-            --exclude '.editorconfig' --exclude '.gitattributes' --exclude '.npmrc'
-
-          echo "public_html: $(find out/public_html -type f | wc -l) files"
-          echo "veloura:     $(find out/veloura -type f | wc -l) files"
-
-      # ---------- Upload only what changed ----------
-      # The action keeps a list of file hashes on the server (.ftp-deploy-sync-state.json)
-      # and compares against it, so unchanged files are skipped.
-      # Tidy the FTP_SERVER secret (drops ftp://, spaces, newlines, a trailing / or :21)
-      # and stop with a clear message if the name still can't be found.
-      - name: Check FTP server name
+      # Tidy the FTP_SERVER secret (drops ftp://, spaces, newlines, a trailing / or :21).
+      - name: Check FTP settings
         env:
           RAW: ${{ secrets.FTP_SERVER }}
         run: |
-          if [ -z "$RAW" ]; then echo "::error::The FTP_SERVER secret is empty or missing (Settings > Secrets and variables > Actions > Repository secrets)."; exit 1; fi
+          if [ -z "$RAW" ]; then echo "::error::The FTP_SERVER secret is empty or missing."; exit 1; fi
           host=$(printf '%s' "$RAW" | tr -d '[:space:]' | sed -E 's#^[A-Za-z]+://##; s#[/:].*$##')
           echo "::add-mask::$host"
           echo "FTP_HOST=$host" >> "$GITHUB_ENV"
-          case "$RAW" in *://*) echo "Note: removed a protocol (like ftp://) from FTP_SERVER.";; esac
-          [ "$RAW" != "$(printf '%s' "$RAW" | tr -d '[:space:]')" ] && echo "Note: removed spaces/newlines from FTP_SERVER."
-          if [[ "$host" =~ ^[0-9]+(.[0-9]+){3}$ ]] || getent hosts "$host" > /dev/null; then
-            echo "FTP server name found (${#host} characters)."
+          if [[ "$host" =~ ^[0-9]+(\.[0-9]+){3}$ ]] || getent hosts "$host" > /dev/null; then
+            echo "FTP server found."
           else
-            echo "::error::FTP_SERVER (after tidying: ${#host} characters, starts with '${host:0:4}') is not a server name that exists. Set it to exactly: ftp.velourajewels.online"
+            echo "::error::FTP_SERVER (${#host} characters, starts with '${host:0:4}') is not a server that exists. Use ftp.velourajewels.online"
             exit 1
           fi
+          # Shared lftp settings: one connection, passive mode, TLS when offered, retries.
+          cat > "$RUNNER_TEMP/lftp-settings" <<'EOF'
+          set ftp:ssl-allow yes
+          set ssl:verify-certificate no
+          set ftp:passive-mode yes
+          set net:max-retries 5
+          set net:reconnect-interval-base 5
+          set net:timeout 30
+          set cmd:fail-exit yes
+          EOF
 
-      - name: Upload public_html
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ env.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./out/public_html/
-          server-dir: ${{ env.PUBLIC_DIR }}
-          exclude: |
-            **/.git*
-            **/.git*/**
-            media/**
-
-      - name: Upload backend (veloura)
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ env.FTP_HOST }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: ./out/veloura/
-          server-dir: ${{ env.APP_DIR }}
-          exclude: |
-            **/.git*
-            **/.git*/**
-            .env
-            storage/**
-
-      # The shop's product list is cached on the server until something is edited in
-      # the admin panel; clear it so the new code's response is served right away.
-      - name: Clear server cache
+      - name: Find the live version
         env:
-          FTP_SERVER: ${{ env.FTP_HOST }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
-          sudo apt-get install -y -qq lftp > /dev/null
-          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_SERVER" -e "
-            set ssl:verify-certificate no;
-            cd '${APP_DIR}storage/framework/cache';
-            rm -r -f data;
-            mkdir -f data;
-            bye" || echo "Could not clear the cache (it refreshes on the next admin edit)."
+          live=$(lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_HOST" \
+                   -e "source $RUNNER_TEMP/lftp-settings; set cmd:fail-exit no; cat ${APP_DIR}.deployed-commit; bye" 2>/dev/null | tr -d '[:space:]' || true)
+          if [ -n "$live" ]; then echo "Live version (from the server): $live"; else live=$DEPLOY_BASE; echo "No .deployed-commit on the server yet; using DEPLOY_BASE: $live"; fi
+          if ! git cat-file -e "$live^{commit}" 2>/dev/null; then echo "::error::Live commit $live is not in this repository."; exit 1; fi
+          echo "LIVE=$(git rev-parse "$live")" >> "$GITHUB_ENV"
+
+      - name: Build the new version
+        run: bash deploy/assemble.sh . "$RUNNER_TEMP/new" deploy/hostinger/index.php
+
+      - name: Build the live version (to compare against)
+        run: |
+          git worktree add -q "$RUNNER_TEMP/live-src" "$LIVE"
+          bash deploy/assemble.sh "$RUNNER_TEMP/live-src" "$RUNNER_TEMP/old" deploy/hostinger/index.php
+
+      - name: List changed files
+        run: |
+          s="$RUNNER_TEMP/upload.lftp"; sum="$RUNNER_TEMP/summary.md"
+          echo "### Deploy ${LIVE:0:7} → ${GITHUB_SHA:0:7}" > "$sum"
+          bash deploy/plan.sh "$RUNNER_TEMP/old/public_html" "$RUNNER_TEMP/new/public_html" "$PUBLIC_DIR" "$s.1" "$sum"
+          bash deploy/plan.sh "$RUNNER_TEMP/old/veloura" "$RUNNER_TEMP/new/veloura" "$APP_DIR" "$s.2" "$sum"
+          # Upload the backend first, then the site, so new pages never call old code.
+          cat "$s.2" "$s.1" > "$s"
+          # Remove the state file left by the earlier deploy tool, if any (it was public).
+          echo "rm -f \"${PUBLIC_DIR}.ftp-deploy-sync-state.json\"" >> "$s"
+          # Record what is live now, then clear the cached product list.
+          echo "$GITHUB_SHA" > "$RUNNER_TEMP/.deployed-commit"
+          echo "put \"$RUNNER_TEMP/.deployed-commit\" -o \"${APP_DIR}.deployed-commit\"" >> "$s"
+          echo "set cmd:fail-exit no" >> "$s"
+          echo "rm -r -f \"${APP_DIR}storage/framework/cache/data\"" >> "$s"
+          echo "mkdir -f \"${APP_DIR}storage/framework/cache/data\"" >> "$s"
+          cat "$sum" >> "$GITHUB_STEP_SUMMARY"
+          grep -c '^put\|^rm' "$s" | xargs echo "FTP actions:"
+
+      - name: Upload changed files
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_HOST" \
+            -e "source $RUNNER_TEMP/lftp-settings; source $RUNNER_TEMP/upload.lftp; bye"
+          echo "Deployed ${GITHUB_SHA:0:7}."
