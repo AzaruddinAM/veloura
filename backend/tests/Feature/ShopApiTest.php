@@ -101,6 +101,19 @@ class ShopApiTest extends TestCase
         $this->getJson('/api/catalogue')->assertJsonCount(0, 'products');
     }
 
+    public function test_catalogue_is_revalidated_on_every_visit(): void
+    {
+        $this->product();
+        $res = $this->getJson('/api/catalogue')->assertOk();
+        $cc = $res->headers->get('Cache-Control');
+        $this->assertStringContainsString('no-cache', $cc);
+        $this->assertStringContainsString('private', $cc);
+        $this->assertStringNotContainsString('max-age=120', $cc);
+
+        // Unchanged since the last visit: a quick 304 with no body.
+        $this->getJson('/api/catalogue', ['If-None-Match' => $res->headers->get('ETag')])->assertStatus(304);
+    }
+
     public function test_catalogue_cache_is_cleared_when_a_product_or_photo_changes(): void
     {
         $p = $this->product();
