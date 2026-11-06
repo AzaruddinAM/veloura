@@ -384,13 +384,13 @@ class AdminApiTest extends TestCase
         Storage::fake('media');
         $this->seed();
 
-        // Every piece has light, dark, real-white and real-dark photos, except two bangles (dark ones only).
+        // Every piece has light, dark, real-white and real-dark photos, except two bangles (light, dark and real-dark).
         $this->assertSame(40, Product::count());
-        $this->assertSame(156, ProductPhoto::count());
+        $this->assertSame(158, ProductPhoto::count());
         $blossom = Product::where('name', 'Blossom Vine Necklace')->firstOrFail();
         $this->assertSame(['light', 'dark', 'real-white', 'real-dark'], $blossom->photos->pluck('theme')->all());
         $this->assertSame(['dark', 'light', 'real-white', 'real-dark'], Product::where('name', 'Golden Hour Watch')->firstOrFail()->photos->pluck('theme')->all());
-        $this->assertSame(['dark', 'real-dark'], Product::where('name', 'Square Crystal Bangle')->firstOrFail()->photos->pluck('theme')->all());
+        $this->assertSame(['light', 'dark', 'real-dark'], Product::where('name', 'Square Crystal Bangle')->firstOrFail()->photos->pluck('theme')->all());
         $this->getJson('/api/catalogue')->assertJsonCount(40, 'products')->assertJsonCount(4, 'products.0.images')->assertJsonPath('products.0.images.2.theme', 'real-white');
     }
 }
