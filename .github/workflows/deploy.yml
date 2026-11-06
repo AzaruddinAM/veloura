@@ -111,10 +111,29 @@ jobs:
       # ---------- Upload only what changed ----------
       # The action keeps a list of file hashes on the server (.ftp-deploy-sync-state.json)
       # and compares against it, so unchanged files are skipped.
+      # Tidy the FTP_SERVER secret (drops ftp://, spaces, newlines, a trailing / or :21)
+      # and stop with a clear message if the name still can't be found.
+      - name: Check FTP server name
+        env:
+          RAW: ${{ secrets.FTP_SERVER }}
+        run: |
+          if [ -z "$RAW" ]; then echo "::error::The FTP_SERVER secret is empty or missing (Settings > Secrets and variables > Actions > Repository secrets)."; exit 1; fi
+          host=$(printf '%s' "$RAW" | tr -d '[:space:]' | sed -E 's#^[A-Za-z]+://##; s#[/:].*$##')
+          echo "::add-mask::$host"
+          echo "FTP_HOST=$host" >> "$GITHUB_ENV"
+          case "$RAW" in *://*) echo "Note: removed a protocol (like ftp://) from FTP_SERVER.";; esac
+          [ "$RAW" != "$(printf '%s' "$RAW" | tr -d '[:space:]')" ] && echo "Note: removed spaces/newlines from FTP_SERVER."
+          if getent hosts "$host" > /dev/null; then
+            echo "FTP server name found (${#host} characters)."
+          else
+            echo "::error::FTP_SERVER (after tidying: ${#host} characters, starts with '${host:0:4}') is not a server name that exists. Set it to exactly: ftp.velourajewels.online"
+            exit 1
+          fi
+
       - name: Upload public_html
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          server: ${{ env.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./out/public_html/
@@ -127,7 +146,7 @@ jobs:
       - name: Upload backend (veloura)
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_SERVER }}
+          server: ${{ env.FTP_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           local-dir: ./out/veloura/
@@ -142,7 +161,7 @@ jobs:
       # the admin panel; clear it so the new code's response is served right away.
       - name: Clear server cache
         env:
-          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_SERVER: ${{ env.FTP_HOST }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
