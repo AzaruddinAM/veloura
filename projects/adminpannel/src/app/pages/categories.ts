@@ -54,40 +54,40 @@ import { Toasts } from '../core/ui';
   `,
 })
 export class CategoriesPage {
-  private api = inject(Api);
-  private toasts = inject(Toasts);
+  private api: Api = inject(Api);
+  private toasts: Toasts = inject(Toasts);
   readonly list = signal<Category[]>([]);
   readonly loading = signal(true);
   readonly busy = signal(false);
-  name = '';
+  name: string = '';
   sort: number | null = null;
 
   constructor() { this.load(); }
 
-  private load() {
+  private load(): void {
     this.api.categories().subscribe({
-      next: l => { this.list.set(l); this.loading.set(false); },
-      error: e => { this.loading.set(false); this.toasts.error(errorText(e)); },
+      next: (l: Category[]): void => { this.list.set(l); this.loading.set(false); },
+      error: (e: any): void => { this.loading.set(false); this.toasts.error(errorText(e)); },
     });
   }
-  private run(req: ReturnType<Api['deleteCategory']>, done: string) {
+  private run(req: ReturnType<Api['deleteCategory']>, done: string): void {
     this.busy.set(true);
     req.subscribe({
-      next: () => { this.busy.set(false); this.toasts.ok(done); this.load(); },
-      error: e => { this.busy.set(false); this.toasts.error(errorText(e)); },
+      next: (): void => { this.busy.set(false); this.toasts.ok(done); this.load(); },
+      error: (e: any): void => { this.busy.set(false); this.toasts.error(errorText(e)); },
     });
   }
 
-  add() {
-    const name = this.name.trim();
+  add(): void {
+    const name: string = this.name.trim();
     this.run(this.api.addCategory({ name, sort: this.sort }), `Added ${name}`);
     this.name = '';
     this.sort = null;
   }
-  save(c: Category, name: string, sort: number) {
+  save(c: Category, name: string, sort: number): void {
     this.run(this.api.updateCategory(c.id, { name: name.trim(), sort: sort || 0 }), 'Category saved');
   }
-  remove(c: Category) {
+  remove(c: Category): void {
     if (confirm(`Delete the category ${c.name}?`)) this.run(this.api.deleteCategory(c.id), `Deleted ${c.name}`);
   }
 }

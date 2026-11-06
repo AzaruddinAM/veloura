@@ -149,12 +149,12 @@ import { STATUS_LABEL, inr, when } from '../core/ui';
   `,
 })
 export class DashboardPage {
-  private api = inject(Api);
-  private router = inject(Router);
+  private api: Api = inject(Api);
+  private router: Router = inject(Router);
   readonly inr = inr;
   readonly when = when;
   readonly label = STATUS_LABEL;
-  readonly today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  readonly today: string = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
   readonly d = signal<Dashboard | null>(null);
   readonly error = signal('');
@@ -173,30 +173,30 @@ export class DashboardPage {
   });
 
   /** Clean integer ticks (0, 1, 2… or 0, 5, 10…) with the top tick at or above the busiest day. */
-  private step = computed(() => {
-    const m = Math.max(0, ...(this.d()?.days.map(x => x.orders) ?? [0]));
-    return [1, 2, 5, 10, 20, 50, 100, 200, 500].find(s => m / s <= 4) ?? 1000;
+  private step = computed((): number => {
+    const m: number = Math.max(0, ...(this.d()?.days.map((x): number => x.orders) ?? [0]));
+    return [1, 2, 5, 10, 20, 50, 100, 200, 500].find((s: number): boolean => m / s <= 4) ?? 1000;
   });
-  readonly max = computed(() => {
-    const m = Math.max(0, ...(this.d()?.days.map(x => x.orders) ?? [0]));
+  readonly max = computed((): number => {
+    const m: number = Math.max(0, ...(this.d()?.days.map((x): number => x.orders) ?? [0]));
     return Math.max(this.step(), Math.ceil(m / this.step()) * this.step());
   });
-  readonly ticks = computed(() => Array.from({ length: this.max() / this.step() + 1 }, (_, i) => i * this.step()));
-  readonly peak = computed(() => {
+  readonly ticks = computed((): number[] => Array.from({ length: this.max() / this.step() + 1 }, (_: unknown, i: number): number => i * this.step()));
+  readonly peak = computed((): number => {
     const days = this.d()?.days ?? [];
-    return days.reduce((best, x, i) => x.orders > days[best].orders ? i : best, 0);
+    return days.reduce((best: number, x, i: number): number => x.orders > days[best].orders ? i : best, 0);
   });
-  readonly chartLabel = computed(() => {
+  readonly chartLabel = computed((): string => {
     const days = this.d()?.days ?? [];
-    const total = days.reduce((n, x) => n + x.orders, 0);
+    const total: number = days.reduce((n: number, x): number => n + x.orders, 0);
     return `${total} orders in the last 14 days. Busiest day ${days[this.peak()]?.label ?? ''}.`;
   });
 
   constructor() { this.load(); }
 
-  load() {
+  load(): void {
     this.error.set('');
-    this.api.dashboard().subscribe({ next: d => this.d.set(d), error: e => this.error.set(errorText(e)) });
+    this.api.dashboard().subscribe({ next: (d: Dashboard): void => this.d.set(d), error: (e: any): void => this.error.set(errorText(e)) });
   }
-  open(id: number) { this.router.navigate(['/orders', id]); }
+  open(id: number): void { this.router.navigate(['/orders', id]); }
 }

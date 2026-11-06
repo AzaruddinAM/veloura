@@ -82,7 +82,14 @@
         </article>
       }
     </div>
-    @if (pages() > 1) {
+    @if (mode() === 'more') {
+      @if (hasMore()) {
+        <div class="pager"><button class="btn line" (click)="viewMore()">View more</button></div>
+      }
+      @if (shown().length > perPage()) {
+        <p class="prange">Showing {{ shownCount() }} of {{ shown().length }} pieces</p>
+      }
+    } @else if (mode() === 'pages' && pages() > 1) {
       <div class="pager" role="navigation" aria-label="Collection pages">
         <button class="pg arrow" (click)="goPage(page() - 1)" [disabled]="page() === 1" aria-label="Previous page">‹</button>
         @for (n of pageList(); track $index) {

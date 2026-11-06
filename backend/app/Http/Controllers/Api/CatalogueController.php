@@ -31,6 +31,8 @@ class CatalogueController extends Controller
             $cover = Setting::get('cover_theme');
 
             return [
+                // How the site lists products: 'pages', 'more' (View more button) or 'all'.
+                'pagination' => Setting::get('pagination'),
                 'categories' => Category::orderBy('sort')->orderBy('name')->get()
                     ->filter(fn (Category $c) => $used->contains($c->id))
                     ->pluck('name')

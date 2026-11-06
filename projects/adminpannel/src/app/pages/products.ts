@@ -103,70 +103,70 @@ import { Toasts, inr } from '../core/ui';
   `,
 })
 export class ProductsPage {
-  private api = inject(Api);
-  private toasts = inject(Toasts);
+  private api: Api = inject(Api);
+  private toasts: Toasts = inject(Toasts);
   readonly inr = inr;
   readonly shows = [{ v: 'all', label: 'All' }, { v: 'on', label: 'On sale' }, { v: 'off', label: 'Hidden' }, { v: 'low', label: 'Low stock' }];
   /** 3 pieces or fewer (stock tracked). */
-  isLow(p: Product) { return p.stock !== null && p.stock <= 3; }
+  isLow(p: Product): boolean { return p.stock !== null && p.stock <= 3; }
 
-  readonly all = signal<Product[]>([]);
-  readonly loading = signal(true);
-  readonly error = signal('');
-  readonly q = signal('');
-  readonly cat = signal('');
-  readonly show = signal('all');
+  readonly all: WritableSignal<Product[]> = signal<Product[]>([]);
+  readonly loading: WritableSignal<boolean> = signal(true);
+  readonly error: WritableSignal<string> = signal('');
+  readonly q: WritableSignal<string> = signal('');
+  readonly cat: WritableSignal<string> = signal('');
+  readonly show: WritableSignal<string> = signal('all');
 
-  readonly categories = computed(() => [...new Set(this.all().map(p => p.category))]);
-  readonly live = computed(() => this.all().filter(p => p.is_active).length);
-  readonly hiddenCount = computed(() => this.all().length - this.live());
-  readonly shown = computed(() => {
-    const q = this.q().trim().toLowerCase();
-    return this.all().filter(p =>
+  readonly categories = computed((): string[] => [...new Set(this.all().map((p: Product): string => p.category))]);
+  readonly live = computed((): number => this.all().filter((p: Product): boolean => p.is_active).length);
+  readonly hiddenCount = computed((): number => this.all().length - this.live());
+  readonly shown = computed((): Product[] => {
+    const q: string = this.q().trim().toLowerCase();
+    return this.all().filter((p: Product): boolean =>
       (!q || p.name.toLowerCase().includes(q) || p.note.toLowerCase().includes(q)) &&
       (!this.cat() || p.category === this.cat()) &&
       (this.show() === 'all' || (this.show() === 'low' ? this.isLow(p) : (this.show() === 'on') === p.is_active)));
   });
 
   // Pages: 6 per page on phones (2 per row), 12 on bigger screens.
-  private width = signal(window.innerWidth);
-  readonly perPage = computed(() => this.width() <= 760 ? 6 : 12);
-  readonly pages = computed(() => Math.max(1, Math.ceil(this.shown().length / this.perPage())));
-  private wanted = signal(1);
-  readonly page = computed(() => Math.min(this.wanted(), this.pages()));
-  readonly paged = computed(() => this.shown().slice((this.page() - 1) * this.perPage(), this.page() * this.perPage()));
-  readonly pageList = computed(() => Array.from({ length: this.pages() }, (_, i) => i + 1));
-  readonly range = computed(() => {
-    const from = (this.page() - 1) * this.perPage() + 1;
+  private width: WritableSignal<number> = signal(window.innerWidth);
+  readonly perPage = computed((): 6 | 12 => this.width() <= 760 ? 6 : 12);
+  readonly pages = computed((): number => Math.max(1, Math.ceil(this.shown().length / this.perPage())));
+  private wanted: WritableSignal<number> = signal(1);
+  readonly page = computed((): number => Math.min(this.wanted(), this.pages()));
+  readonly paged = computed((): Product[] => this.shown().slice((this.page() - 1) * this.perPage(), this.page() * this.perPage()));
+  readonly pageList = computed((): number[] => Array.from({ length: this.pages() }, (_: unknown, i: number): number => i + 1));
+  readonly range = computed((): string => {
+    const from: number = (this.page() - 1) * this.perPage() + 1;
     return `${from}–${Math.min(from + this.perPage() - 1, this.shown().length)}`;
   });
 
   constructor() {
     this.api.products().subscribe({
-      next: p => { this.all.set(p); this.loading.set(false); },
-      error: e => { this.error.set(errorText(e)); this.loading.set(false); },
+      next: (p: Product[]): void => { this.all.set(p); this.loading.set(false); },
+      error: (e: any): void => { this.error.set(errorText(e)); this.loading.set(false); },
     });
   }
 
-  resized() { this.width.set(window.innerWidth); }
+  resized(): void { this.width.set(window.innerWidth); }
   /** Changing the search or a filter starts again from page 1. */
-  filter(sig: WritableSignal<string>, v: string) {
+  filter(sig: WritableSignal<string>, v: string): void {
     sig.set(v);
     this.wanted.set(1);
   }
-  go(n: number) {
+  go(n: number): void {
     this.wanted.set(n);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  off(p: Product) { return Math.round((1 - p.price / p.was_price) * 100); }
+  off(p: Product): number { return Math.round((1 - p.price / p.was_price) * 100); }
 
-  toggle(p: Product, on: boolean) {
-    this.all.update(l => l.map(x => x.id === p.id ? { ...x, is_active: on } : x));
+  toggle(p: Product, on: boolean): void {
+    this.all.update((l: Product[]): Product[] => l.map((x: Product): Product => x.id === p.id ? { ...x, is_active: on } : x));
     this.api.patchProduct(p.id, { is_active: on }).subscribe({
-      next: () => this.toasts.ok(on ? `${p.name} is on sale` : `${p.name} is hidden from the website`),
-      error: e => {
-        this.all.update(l => l.map(x => x.id === p.id ? { ...x, is_active: !on } : x));
+      next: (): void => this.toasts.ok(on ? `${p.name} is on sale` : `${p.name} is hidden from the website`),
+      error: (e: any): void => {
+        this.all.update((l: Product[]): Product[] => l.map((x: Product): Product => x.id === p.id ? { ...x, is_active: !on } : x));
         this.toasts.error(errorText(e));
       },
     });

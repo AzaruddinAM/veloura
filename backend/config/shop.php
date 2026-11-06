@@ -38,4 +38,20 @@ return [
 
     'cover_theme' => env('SHOP_COVER_THEME', 'product'),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Product list pagination
+    |--------------------------------------------------------------------------
+    |
+    | How the shop lists products:
+    |   'pages' - numbered pages (two rows of cards per page)
+    |   'more'  - two rows at first, then a "View more" button adds the next rows
+    |   'all'   - every product at once, no pagination
+    |
+    | Can be changed in the admin panel (Settings > Product list).
+    |
+    */
+
+    'pagination' => env('SHOP_PAGINATION', 'pages'),
+
 ];

@@ -26,5 +26,5 @@ import { Toasts } from './core/ui';
   `,
 })
 export class App {
-  readonly toasts = inject(Toasts);
+  readonly toasts: Toasts = inject(Toasts);
 }

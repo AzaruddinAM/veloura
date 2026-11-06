@@ -58,8 +58,8 @@ import { STATUS_LABEL, inr, when } from '../core/ui';
   styles: `:host{display:block} .cust{text-align:right} .cust .muted{display:block} @media (min-width:761px){.cust{text-align:left}}`,
 })
 export class OrdersPage {
-  private api = inject(Api);
-  private router = inject(Router);
+  private api: Api = inject(Api);
+  private router: Router = inject(Router);
   readonly inr = inr;
   readonly when = when;
   readonly label = STATUS_LABEL;
@@ -69,11 +69,11 @@ export class OrdersPage {
   readonly status = input<(typeof STATUSES)[number]>();
   readonly q = input<string>();
   readonly page = input<string>();
-  readonly pageNo = computed(() => Math.max(1, Number(this.page()) || 1));
+  readonly pageNo = computed((): number => Math.max(1, Number(this.page()) || 1));
 
   readonly rows = signal<OrderRow[]>([]);
   readonly counts = signal<Partial<Record<string, number>>>({});
-  readonly all = computed(() => Object.values(this.counts()).reduce((a: number, b) => a + (b ?? 0), 0));
+  readonly all = computed((): number => Object.values(this.counts()).reduce((a: number, b: number | undefined): number => a + (b ?? 0), 0));
   readonly pages = signal(1);
   readonly total = signal(0);
   readonly loading = signal(true);
@@ -81,27 +81,27 @@ export class OrdersPage {
   private timer?: ReturnType<typeof setTimeout>;
 
   constructor() {
-    effect(() => {
+    effect((): void => {
       const params = { status: this.status(), q: this.q(), page: this.pageNo() };
       this.loading.set(true);
       this.api.orders(params).subscribe({
-        next: r => {
+        next: (r): void => {
           this.rows.set(r.data); this.counts.set(r.counts); this.pages.set(r.meta.pages); this.total.set(r.meta.total);
           this.loading.set(false); this.error.set('');
         },
-        error: e => { this.error.set(errorText(e)); this.loading.set(false); },
+        error: (e: any): void => { this.error.set(errorText(e)); this.loading.set(false); },
       });
     });
   }
 
-  go(change: { status?: string | null; q?: string | null; page?: number | null }) {
+  go(change: { status?: string | null; q?: string | null; page?: number | null }): void {
     // Changing the filter or search starts again from page 1.
-    const page = 'page' in change ? change.page : null;
+    const page: number | null | undefined = 'page' in change ? change.page : null;
     this.router.navigate([], { queryParams: { ...change, page: page && page > 1 ? page : null }, queryParamsHandling: 'merge' });
   }
-  search(v: string) {
+  search(v: string): void {
     clearTimeout(this.timer);
-    this.timer = setTimeout(() => this.go({ q: v.trim() || null }), 300);
+    this.timer = setTimeout((): void => this.go({ q: v.trim() || null }), 300);
   }
-  open(id: number) { this.router.navigate(['/orders', id]); }
+  open(id: number): void { this.router.navigate(['/orders', id]); }
 }

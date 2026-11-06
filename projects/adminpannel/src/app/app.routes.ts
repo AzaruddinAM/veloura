@@ -2,7 +2,7 @@ import { Routes } from '@angular/router';
 import { signedInGuard, signedOutGuard } from './core/auth';
 import { Shell } from './shell';
 
-const t = (page: string) => `${page} · Veloura Admin`;
+const t = (page: string): string => `${page} · Veloura Admin`;
 
 export const routes: Routes = [
   { path: 'login', canActivate: [signedOutGuard], title: t('Log in'), loadComponent: () => import('./pages/login').then(m => m.Login) },

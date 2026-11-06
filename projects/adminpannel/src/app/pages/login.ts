@@ -43,26 +43,26 @@ import { Auth } from '../core/auth';
   `,
 })
 export class Login {
-  private api = inject(Api);
-  private auth = inject(Auth);
-  private router = inject(Router);
+  private api: Api = inject(Api);
+  private auth: Auth = inject(Auth);
+  private router: Router = inject(Router);
   readonly next = input<string>();
 
-  email = '';
-  password = '';
+  email: string = '';
+  password: string = '';
   readonly busy = signal(false);
   readonly error = signal('');
   readonly show = signal(false);
 
-  submit() {
+  submit(): void {
     this.busy.set(true);
     this.error.set('');
     this.api.login(this.email.trim(), this.password).subscribe({
-      next: r => {
+      next: (r): void => {
         this.auth.set(r.token, r.user);
         this.router.navigateByUrl(this.next() || '/');
       },
-      error: e => { this.error.set(errorText(e)); this.busy.set(false); },
+      error: (e: any): void => { this.error.set(errorText(e)); this.busy.set(false); },
     });
   }
 }

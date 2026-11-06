@@ -18,7 +18,7 @@ type Editing =
 /** One tile in the photo gallery, for both saved and not-yet-saved photos. */
 interface Tile { id: number; thumb: string; style: string; theme: Theme | null; pending: boolean; natW?: number; crop?: Crop | null; }
 
-const ACCEPT = /^image\/(jpeg|png|webp|avif|gif)$/;
+const ACCEPT: RegExp = /^image\/(jpeg|png|webp|avif|gif)$/;
 
 @Component({
   selector: 'adm-product-form',
@@ -207,27 +207,27 @@ const ACCEPT = /^image\/(jpeg|png|webp|avif|gif)$/;
   `,
 })
 export class ProductFormPage {
-  private api = inject(Api);
-  private router = inject(Router);
-  private toasts = inject(Toasts);
+  private api: Api = inject(Api);
+  private router: Router = inject(Router);
+  private toasts: Toasts = inject(Toasts);
   readonly inr = inr;
   readonly kinds = THEME_KINDS;
 
   readonly id = input<string>();
-  readonly editing = computed(() => !!this.id());
+  readonly editing = computed((): boolean => !!this.id());
   readonly product = signal<Product | null>(null);
   readonly cats = signal<Category[]>([]);
   readonly loadError = signal('');
   readonly busy = signal(false);
   readonly errs = signal<Record<string, string>>({});
-  readonly photoErrors = computed(() => Object.entries(this.errs()).filter(([k]) => k.startsWith('photo') || k === 'image' || k === 'theme' || k.startsWith('crop')).map(([, v]) => v));
+  readonly photoErrors = computed((): string[] => Object.entries(this.errs()).filter(([k]: [string, string]): boolean => k.startsWith('photo') || k === 'image' || k === 'theme' || k.startsWith('crop')).map(([, v]: [string, string]): string => v));
 
   // themes: photo types shown in the shop; empty follows the shop setting.
   f = { name: '', note: '', category_id: null as number | null, sort: 0, price: null as number | null, was_price: null as number | null, stock: null as number | null, is_active: true, themes: [] as Theme[] };
 
   // New product: photos wait here until "Add product".
   readonly pending = signal<Pending[]>([]);
-  private nextKey = 1;
+  private nextKey: number = 1;
   private sizes = signal<Record<string, { w: number; h: number }>>({});
 
   // Cropper panel.
@@ -237,158 +237,158 @@ export class ProductFormPage {
   readonly nat = computed(() => this.sizes()[this.edit()?.src ?? ''] ?? { w: 0, h: 0 });
 
   readonly tiles = computed<Tile[]>(() => {
-    const saved = this.product()?.photos ?? [];
-    if (this.editing()) return saved.map(p => ({ id: p.id, thumb: p.thumb, style: '', theme: p.theme, pending: false }));
-    return this.pending().map(p => {
+    const saved: Photo[] = this.product()?.photos ?? [];
+    if (this.editing()) return saved.map((p: Photo) => ({ id: p.id, thumb: p.thumb, style: '', theme: p.theme, pending: false }));
+    return this.pending().map((p: Pending) => {
       const s = this.sizes()[p.url];
       return { id: -p.key, thumb: p.url, theme: p.theme, pending: true, natW: s?.w, crop: p.crop, style: s ? cropStyle(p.crop ?? centre(s.w, s.h), s.w, s.h, 160) : '' };
     });
   });
 
   constructor() {
-    this.api.categories().subscribe(c => {
+    this.api.categories().subscribe((c: Category[]): void => {
       this.cats.set(c);
       if (!this.editing() && c.length === 1) this.f.category_id = c[0].id;
     });
-    effect(() => {
-      const id = this.id();
+    effect((): void => {
+      const id: string | undefined = this.id();
       if (!id) return;
       this.api.products().subscribe({
-        next: list => {
-          const p = list.find(x => x.id === +id);
+        next: (list: Product[]): void => {
+          const p: Product | undefined = list.find((x: Product): boolean => x.id === +id);
           if (!p) { this.loadError.set('This product does not exist any more.'); return; }
           this.product.set(p);
           this.f = { name: p.name, note: p.note, category_id: p.category_id, sort: p.sort, price: p.price, was_price: p.was_price, stock: p.stock, is_active: p.is_active, themes: p.themes ?? [] };
         },
-        error: e => this.loadError.set(errorText(e)),
+        error: (e: any): void => this.loadError.set(errorText(e)),
       });
     });
-    inject(DestroyRef).onDestroy(() => this.pending().forEach(p => URL.revokeObjectURL(p.url)));
+    inject(DestroyRef).onDestroy((): void => this.pending().forEach((p: Pending): void => URL.revokeObjectURL(p.url)));
   }
 
-  discount() {
+  discount(): number {
     const { price, was_price } = this.f;
     return price && was_price && was_price > price ? Math.round((1 - price / was_price) * 100) : 0;
   }
-  preview(box: number) { return cropStyle(this.crop(), this.nat().w, this.nat().h, box); }
+  preview(box: number): string { return cropStyle(this.crop(), this.nat().w, this.nat().h, box); }
 
   // ---- Photos shown in the shop ----
   /** Whether the product has a photo of this type (not-yet-detected photos count as none). */
-  has(t: Theme) { return this.tiles().some(x => x.theme === t); }
-  shownCount() { return this.tiles().filter(x => x.theme && this.f.themes.includes(x.theme)).length; }
-  toggleShown(t: Theme) {
-    const cur = this.f.themes;
+  has(t: Theme): boolean { return this.tiles().some((x: Tile): boolean => x.theme === t); }
+  shownCount(): number { return this.tiles().filter((x: Tile): boolean | null => x.theme && this.f.themes.includes(x.theme)).length; }
+  toggleShown(t: Theme): void {
+    const cur: Theme[] = this.f.themes;
     // Kept in the same order as the type list.
-    this.f.themes = this.kinds.map(k => k.value).filter(v => v === t ? !cur.includes(t) : cur.includes(v));
+    this.f.themes = this.kinds.map((k): Theme => k.value).filter((v: Theme): boolean => v === t ? !cur.includes(t) : cur.includes(v));
   }
 
   // ---- Choosing files ----
-  pick(e: Event) {
-    const input = e.target as HTMLInputElement;
+  pick(e: Event): void {
+    const input: HTMLInputElement = e.target as HTMLInputElement;
     this.useFiles([...(input.files ?? [])]);
     input.value = '';
   }
-  drop(e: DragEvent) {
+  drop(e: DragEvent): void {
     e.preventDefault();
     this.useFiles([...(e.dataTransfer?.files ?? [])]);
   }
-  private useFiles(files: File[]) {
-    const ok = files.filter(f => {
+  private useFiles(files: File[]): void {
+    const ok: File[] = files.filter((f: File): boolean => {
       if (!ACCEPT.test(f.type)) { this.toasts.error(`${f.name}: please choose a JPG, PNG or WebP photo.`); return false; }
       if (f.size > 8 * 1024 * 1024) { this.toasts.error(`${f.name} is larger than 8 MB.`); return false; }
       return true;
     }).slice(0, 10 - this.tiles().length);
     if (!ok.length) return;
-    this.errs.update(e => Object.fromEntries(Object.entries(e).filter(([k]) => !k.startsWith('photo'))));
+    this.errs.update((e: Record<string, string>) => Object.fromEntries(Object.entries(e).filter(([k]: [string, string]): boolean => !k.startsWith('photo'))));
 
     if (this.editing()) {
       // Saved product: crop the first new photo, then upload it.
       this.openEdit({ kind: 'add', file: ok[0], src: this.url(ok[0]) }, null, null);
       return;
     }
-    const added = ok.map(file => ({ key: this.nextKey++, file, url: this.url(file), crop: null, theme: null } as Pending));
-    this.pending.update(l => [...l, ...added]);
+    const added: Pending[] = ok.map((file: File): Pending => ({ key: this.nextKey++, file, url: this.url(file), crop: null, theme: null } as Pending));
+    this.pending.update((l: Pending[]): Pending[] => [...l, ...added]);
     this.openEdit({ kind: 'pending', key: added[0].key, src: added[0].url, initial: null }, null, null);
   }
-  private url(file: File) {
-    const u = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => this.sizes.update(s => ({ ...s, [u]: { w: img.naturalWidth, h: img.naturalHeight } }));
+  private url(file: File): string {
+    const u: string = URL.createObjectURL(file);
+    const img: HTMLImageElement = new Image();
+    img.onload = (): void => this.sizes.update(s => ({ ...s, [u]: { w: img.naturalWidth, h: img.naturalHeight } }));
     img.src = u;
     return u;
   }
 
   // ---- Cropper panel ----
-  private openEdit(e: Editing, crop: Crop | null, theme: Theme | null) {
+  private openEdit(e: Editing, crop: Crop | null, theme: Theme | null): void {
     this.edit.set(e);
     this.crop.set(crop);
     this.theme.set(theme);
     if (e.kind === 'photo') this.url0(e.src);
   }
   /** Measure a saved photo's original (for the previews). */
-  private url0(src: string) {
+  private url0(src: string): void {
     if (this.sizes()[src]) return;
-    const img = new Image();
-    img.onload = () => this.sizes.update(s => ({ ...s, [src]: { w: img.naturalWidth, h: img.naturalHeight } }));
+    const img: HTMLImageElement = new Image();
+    img.onload = (): void => this.sizes.update(s => ({ ...s, [src]: { w: img.naturalWidth, h: img.naturalHeight } }));
     img.src = src;
   }
-  openCrop(t: Tile) {
+  openCrop(t: Tile): void {
     if (t.pending) {
-      const p = this.pending().find(x => x.key === -t.id)!;
+      const p: Pending = this.pending().find((x: Pending): boolean => x.key === -t.id)!;
       this.openEdit({ kind: 'pending', key: p.key, src: p.url, initial: p.crop }, p.crop, p.theme);
     } else {
-      const ph = this.product()!.photos.find(x => x.id === t.id)!;
+      const ph: Photo = this.product()!.photos.find((x: Photo): boolean => x.id === t.id)!;
       this.openEdit({ kind: 'photo', photo: ph, src: ph.original, initial: ph.crop }, ph.crop, ph.theme);
     }
   }
-  closeEdit() {
-    const e = this.edit();
+  closeEdit(): void {
+    const e: Editing | null = this.edit();
     if (e?.kind === 'add') URL.revokeObjectURL(e.src);
     this.edit.set(null);
   }
-  applyEdit() {
-    const e = this.edit();
+  applyEdit(): void {
+    const e: Editing | null = this.edit();
     if (!e) return;
-    const crop = this.crop();
+    const crop: Crop | null = this.crop();
     if (e.kind === 'pending') {
-      this.pending.update(l => l.map(p => p.key === e.key ? { ...p, crop, theme: this.theme() } : p));
+      this.pending.update((l: Pending[]): Pending[] => l.map((p: Pending): Pending => p.key === e.key ? { ...p, crop, theme: this.theme() } : p));
       // Move on to the next photo that has not been looked at yet.
-      const next = this.pending().find(p => p.key > e.key && p.crop === null);
+      const next: Pending | undefined = this.pending().find((p: Pending): boolean => p.key > e.key && p.crop === null);
       if (next) this.openEdit({ kind: 'pending', key: next.key, src: next.url, initial: null }, null, next.theme);
       else this.edit.set(null);
       return;
     }
-    const pid = this.product()!.id;
+    const pid: number = this.product()!.id;
     if (e.kind === 'add') {
-      const body = new FormData();
+      const body: FormData = new FormData();
       body.append('image', e.file);
       appendCrop(body, '', crop);
       if (this.theme()) body.append('theme', this.theme()!);
-      this.run(this.api.addPhoto(pid, body), 'Photo added', () => this.closeEdit());
+      this.run(this.api.addPhoto(pid, body), 'Photo added', (): void => this.closeEdit());
     } else {
-      this.run(this.api.updatePhoto(pid, e.photo.id, { ...(crop ? { crop } : {}), theme: this.theme() ?? e.photo.theme }), 'Photo saved', () => this.edit.set(null));
+      this.run(this.api.updatePhoto(pid, e.photo.id, { ...(crop ? { crop } : {}), theme: this.theme() ?? e.photo.theme }), 'Photo saved', (): void => this.edit.set(null));
     }
   }
 
   // ---- Tile actions ----
-  setTheme(t: Tile, theme: Theme) {
+  setTheme(t: Tile, theme: Theme): void {
     if (t.theme === theme) return;
-    if (t.pending) { this.pending.update(l => l.map(p => p.key === -t.id ? { ...p, theme } : p)); return; }
-    this.run(this.api.updatePhoto(this.product()!.id, t.id, { theme }), `Marked as ${THEME_KINDS.find(k => k.value === theme)!.label.toLowerCase()}`);
+    if (t.pending) { this.pending.update((l: Pending[]): Pending[] => l.map((p: Pending): Pending => p.key === -t.id ? { ...p, theme } : p)); return; }
+    this.run(this.api.updatePhoto(this.product()!.id, t.id, { theme }), `Marked as ${THEME_KINDS.find((k): boolean => k.value === theme)!.label.toLowerCase()}`);
   }
-  makeCover(t: Tile) {
+  makeCover(t: Tile): void {
     if (t.pending) {
-      this.pending.update(l => [l.find(p => p.key === -t.id)!, ...l.filter(p => p.key !== -t.id)]);
+      this.pending.update((l: Pending[]): Pending[] => [l.find((p: Pending): boolean => p.key === -t.id)!, ...l.filter((p: Pending): boolean => p.key !== -t.id)]);
       return;
     }
-    const ids = this.product()!.photos.map(p => p.id);
-    this.run(this.api.orderPhotos(this.product()!.id, [t.id, ...ids.filter(i => i !== t.id)]), 'Cover changed');
+    const ids: number[] = this.product()!.photos.map((p: Photo): number => p.id);
+    this.run(this.api.orderPhotos(this.product()!.id, [t.id, ...ids.filter((i: number): boolean => i !== t.id)]), 'Cover changed');
   }
-  removeTile(t: Tile) {
+  removeTile(t: Tile): void {
     if (t.pending) {
-      const p = this.pending().find(x => x.key === -t.id);
+      const p: Pending | undefined = this.pending().find((x: Pending): boolean => x.key === -t.id);
       if (p) URL.revokeObjectURL(p.url);
-      this.pending.update(l => l.filter(x => x.key !== -t.id));
+      this.pending.update((l: Pending[]): Pending[] => l.filter((x: Pending): boolean => x.key !== -t.id));
       if (this.edit()?.kind === 'pending' && (this.edit() as { key: number }).key === -t.id) this.edit.set(null);
       return;
     }
@@ -397,18 +397,18 @@ export class ProductFormPage {
   }
 
   /** Run a photo request on a saved product and show the fresh product. */
-  private run(req: Observable<Product>, done: string, after?: () => void) {
+  private run(req: Observable<Product>, done: string, after?: () => void): void {
     this.busy.set(true);
     this.errs.set({});
     req.subscribe({
-      next: p => { this.product.set(p); this.busy.set(false); this.toasts.ok(done); after?.(); },
-      error: e => { this.busy.set(false); this.errs.set(fieldErrors(e)); this.toasts.error(errorText(e)); },
+      next: (p: Product): void => { this.product.set(p); this.busy.set(false); this.toasts.ok(done); after?.(); },
+      error: (e: any): void => { this.busy.set(false); this.errs.set(fieldErrors(e)); this.toasts.error(errorText(e)); },
     });
   }
 
   // ---- Save / delete product ----
-  save() {
-    const body = new FormData();
+  save(): void {
+    const body: FormData = new FormData();
     const f = this.f;
     body.append('name', f.name.trim());
     body.append('note', f.note.trim());
@@ -419,10 +419,10 @@ export class ProductFormPage {
     body.append('stock', f.stock === null || (f.stock as unknown) === '' ? '' : String(f.stock));
     body.append('is_active', f.is_active ? '1' : '0');
     // An empty value clears the choice (follow the shop setting).
-    if (f.themes.length) f.themes.forEach(t => body.append('themes[]', t));
+    if (f.themes.length) f.themes.forEach((t: Theme): void => body.append('themes[]', t));
     else body.append('themes', '');
     if (!this.editing()) {
-      this.pending().forEach((p, i) => {
+      this.pending().forEach((p: Pending, i: number): void => {
         body.append(`photos[${i}][image]`, p.file);
         appendCrop(body, `photos[${i}]`, p.crop);
         if (p.theme) body.append(`photos[${i}][theme]`, p.theme);
@@ -432,11 +432,11 @@ export class ProductFormPage {
     this.busy.set(true);
     this.errs.set({});
     this.api.saveProduct(this.product()?.id ?? null, body).subscribe({
-      next: p => {
+      next: (p: Product): void => {
         this.toasts.ok(this.editing() ? `Saved ${p.name}` : `Added ${p.name}`);
         this.router.navigate(['/products']);
       },
-      error: e => {
+      error: (e: any): void => {
         this.busy.set(false);
         this.errs.set(fieldErrors(e));
         this.toasts.error(errorText(e));
@@ -444,20 +444,20 @@ export class ProductFormPage {
     });
   }
 
-  remove() {
-    const p = this.product();
+  remove(): void {
+    const p: Product | null = this.product();
     if (!p || !confirm(`Delete ${p.name}? It disappears from the website. Past orders keep their details.`)) return;
     this.busy.set(true);
     this.api.deleteProduct(p.id).subscribe({
-      next: () => { this.toasts.ok(`Deleted ${p.name}`); this.router.navigate(['/products']); },
-      error: e => { this.busy.set(false); this.toasts.error(errorText(e)); },
+      next: (): void => { this.toasts.ok(`Deleted ${p.name}`); this.router.navigate(['/products']); },
+      error: (e: any): void => { this.busy.set(false); this.toasts.error(errorText(e)); },
     });
   }
 }
 
-function appendCrop(body: FormData, prefix: string, c: Crop | null) {
+function appendCrop(body: FormData, prefix: string, c: Crop | null): void {
   if (!c) return;
-  const k = (n: string) => prefix ? `${prefix}[crop][${n}]` : `crop[${n}]`;
+  const k = (n: string): string => prefix ? `${prefix}[crop][${n}]` : `crop[${n}]`;
   body.append(k('x'), c.x.toFixed(5));
   body.append(k('y'), c.y.toFixed(5));
   body.append(k('size'), c.size.toFixed(5));
@@ -465,6 +465,6 @@ function appendCrop(body: FormData, prefix: string, c: Crop | null) {
 
 /** The centre square, as the backend makes it when no crop is given. */
 function centre(w: number, h: number): Crop {
-  const s = Math.min(w, h);
+  const s: number = Math.min(w, h);
   return { x: (w - s) / 2 / w, y: (h - s) / 2 / h, size: s / w };
 }

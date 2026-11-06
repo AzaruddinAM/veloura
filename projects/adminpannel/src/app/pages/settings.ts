@@ -60,6 +60,23 @@ import { Toasts } from '../core/ui';
       }
     </section>
 
+    <section class="card display">
+      <h2>Product list</h2>
+      <p class="hint" style="margin:-.5rem 0 1rem">How the shop lists products. Pages and View more both show two rows of cards at a time; turn pagination off to show every product at once.</p>
+      <div class="opts" role="radiogroup" aria-label="Product list pagination">
+        @for (o of listings; track o.value) {
+          @let on = listing() === o.value;
+          <button type="button" class="opt" role="radio" [class.on]="on" [attr.aria-checked]="on"
+                  [disabled]="listing() === null || saving()" (click)="setListing(o.value)">
+            <span class="sw glyph" aria-hidden="true">{{ o.glyph }}</span>
+            <b>{{ o.label }}</b>
+            <span class="hint">{{ o.hint }}</span>
+            <span class="tick radio" aria-hidden="true"></span>
+          </button>
+        }
+      </div>
+    </section>
+
     <div class="cols">
       <section class="card">
         <h2>Account</h2>
@@ -117,6 +134,7 @@ import { Toasts } from '../core/ui';
     .tick.radio{border-radius:50%}
     .opt.on .tick.radio::after{left:4px;top:4px;width:7px;height:7px;border:0;border-radius:50%;background:var(--ink);transform:none}
     .warn{color:var(--warn)}
+    .sw.glyph{display:grid;place-items:center;font-size:1rem;letter-spacing:.08em;color:var(--gold);background:#d4a95a0d}
   `,
 })
 export class SettingsPage {
@@ -142,11 +160,28 @@ export class SettingsPage {
   ];
   readonly cover = signal<ShopSettings['cover_theme'] | null>(null);
   readonly saving = signal(false);
+  readonly listings: { value: ShopSettings['pagination']; label: string; hint: string; glyph: string }[] = [
+    { value: 'pages', label: 'Page numbers', hint: 'Customers move between numbered pages', glyph: '1 2 3' },
+    { value: 'more', label: 'View more button', hint: 'Loads the next rows below the cards', glyph: '+' },
+    { value: 'all', label: 'Off: show all', hint: 'Every product on one page', glyph: '∞' },
+  ];
+  readonly listing = signal<ShopSettings['pagination'] | null>(null);
 
   constructor() {
     this.api.settings().subscribe({
-      next: s => { this.chosen.set(s.photo_themes); this.cover.set(s.cover_theme); },
+      next: s => { this.chosen.set(s.photo_themes); this.cover.set(s.cover_theme); this.listing.set(s.pagination); },
       error: e => this.toasts.error(errorText(e)),
+    });
+  }
+
+  setListing(value: ShopSettings['pagination']) {
+    const before = this.listing();
+    if (before === null || value === before) return;
+    this.listing.set(value);
+    this.saving.set(true);
+    this.api.saveSettings({ pagination: value }).subscribe({
+      next: s => { this.listing.set(s.pagination); this.saving.set(false); this.toasts.ok('Product list saved'); },
+      error: e => { this.listing.set(before); this.saving.set(false); this.toasts.error(errorText(e)); },
     });
   }
 

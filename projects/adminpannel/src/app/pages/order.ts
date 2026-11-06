@@ -90,14 +90,14 @@ import { Counts, STATUS_LABEL, Toasts, inr, waLink, when } from '../core/ui';
   `,
 })
 export class OrderPage {
-  private api = inject(Api);
-  private router = inject(Router);
-  private toasts = inject(Toasts);
-  private counts = inject(Counts);
+  private api: Api = inject(Api);
+  private router: Router = inject(Router);
+  private toasts: Toasts = inject(Toasts);
+  private counts: Counts = inject(Counts);
   readonly inr = inr;
   readonly when = when;
-  readonly label = STATUS_LABEL;
-  readonly statuses = STATUSES;
+  readonly label: Record<Status, string> = STATUS_LABEL;
+  readonly statuses: Status[] = STATUSES;
 
   readonly id = input.required<string>();
   readonly o = signal<Order | null>(null);
@@ -105,47 +105,47 @@ export class OrderPage {
   readonly busy = signal(false);
   form = { customer_name: '', phone: '', address: '', note: '' };
 
-  readonly pieces = computed(() => this.o()?.items.reduce((n, i) => n + i.qty, 0) ?? 0);
-  readonly wa = computed(() => {
-    const o = this.o();
+  readonly pieces = computed((): number => this.o()?.items.reduce((n: number, i): number => n + i.qty, 0) ?? 0);
+  readonly wa = computed((): string | null => {
+    const o: Order | null = this.o();
     return o ? waLink(o.phone, `Hi ${o.customer_name || ''}, this is Veloura about your order ${o.ref} (${inr(o.total)}). It is now ${STATUS_LABEL[o.status].toLowerCase()}.`.replace('Hi ,', 'Hi,')) : null;
   });
 
   constructor() {
-    effect(() => {
-      this.api.order(+this.id()).subscribe({ next: o => this.show(o), error: e => this.error.set(errorText(e)) });
+    effect((): void => {
+      this.api.order(+this.id()).subscribe({ next: (o: Order): void => this.show(o), error: (e: any): void => this.error.set(errorText(e)) });
     });
   }
 
-  private show(o: Order) {
+  private show(o: Order): void {
     this.o.set(o);
     this.form = { customer_name: o.customer_name ?? '', phone: o.phone ?? '', address: o.address ?? '', note: o.note ?? '' };
   }
 
-  setStatus(status: Status) {
+  setStatus(status: Status): void {
     if (status === this.o()?.status) return;
     this.update({ status }, `Marked as ${STATUS_LABEL[status].toLowerCase()}`);
   }
-  save() {
+  save(): void {
     this.update({ ...this.form }, 'Customer details saved');
   }
-  private update(body: Parameters<Api['updateOrder']>[1], done: string) {
+  private update(body: Parameters<Api['updateOrder']>[1], done: string): void {
     this.busy.set(true);
     this.api.updateOrder(+this.id(), body).subscribe({
-      next: o => {
+      next: (o: Order): void => {
         this.show(o); this.busy.set(false); this.toasts.ok(done);
-        if (body.status) this.api.counts().subscribe(c => this.counts.pending.set(c.pending_orders));
+        if (body.status) this.api.counts().subscribe((c): void => this.counts.pending.set(c.pending_orders));
       },
-      error: e => { this.busy.set(false); this.toasts.error(errorText(e)); },
+      error: (e: any): void => { this.busy.set(false); this.toasts.error(errorText(e)); },
     });
   }
-  remove() {
+  remove(): void {
     if (!confirm(`Delete order ${this.o()?.ref}? This cannot be undone.`)) return;
     this.busy.set(true);
     this.api.deleteOrder(+this.id()).subscribe({
-      next: () => { this.toasts.ok('Order deleted'); this.router.navigate(['/orders']); },
-      error: e => { this.busy.set(false); this.toasts.error(errorText(e)); },
+      next: (): void => { this.toasts.ok('Order deleted'); this.router.navigate(['/orders']); },
+      error: (e: any): void => { this.busy.set(false); this.toasts.error(errorText(e)); },
     });
   }
-  print() { window.print(); }
+  print(): void { window.print(); }
 }

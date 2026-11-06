@@ -6,10 +6,10 @@ import { AdminUser } from './auth';
  * Where the Laravel API lives. '/api' works when the panel is served by Laravel
  * at /adminpannel (production) and with `npm run start:admin` (dev proxy).
  */
-export const API = '/api/admin';
+export const API: string = '/api/admin';
 
 /** The shop website, for the "View website" link. Change it if the shop is on another domain. */
-export const SITE_URL = '/';
+export const SITE_URL: string = '/';
 
 export type Status = 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled';
 export const STATUSES: Status[] = ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'];
@@ -39,6 +39,8 @@ export interface ShopSettings {
   photo_themes: Theme[];
   /** Photo type used as the cover (first photo, also in the bag); 'product' keeps each product's own. */
   cover_theme: 'product' | Theme;
+  /** How the shop lists products: numbered pages, a "View more" button, or all at once. */
+  pagination: 'pages' | 'more' | 'all';
 }
 export interface Photo {
   id: number; theme: Theme; sort: number; crop: Crop; original: string;
@@ -73,7 +75,7 @@ export interface Dashboard {
 
 @Injectable({ providedIn: 'root' })
 export class Api {
-  private http = inject(HttpClient);
+  private http: HttpClient = inject(HttpClient);
 
   login(email: string, password: string) { return this.http.post<{ token: string; user: AdminUser }>(`${API}/login`, { email, password }); }
   logout() { return this.http.post(`${API}/logout`, {}); }
@@ -113,13 +115,13 @@ export class Api {
 }
 
 function clean(o: Record<string, unknown>): Record<string, string> {
-  return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== '').map(([k, v]) => [k, String(v)]));
+  return Object.fromEntries(Object.entries(o).filter(([, v]: [string, unknown]): boolean => v !== undefined && v !== null && v !== '').map(([k, v]: [string, unknown]): [string, string] => [k, String(v)]));
 }
 
 /** The first readable message from a Laravel error response. */
 export function errorText(e: unknown): string {
   if (e instanceof HttpErrorResponse) {
-    const errors = e.error?.errors as Record<string, string[]> | undefined;
+    const errors: Record<string, string[]> | undefined = e.error?.errors as Record<string, string[]> | undefined;
     if (errors) return Object.values(errors)[0]?.[0] ?? 'Please check the form.';
     if (e.status === 0) return 'Cannot reach the server. Is the backend running?';
     if (e.status === 429) return 'Too many attempts. Please wait a minute and try again.';
@@ -130,6 +132,6 @@ export function errorText(e: unknown): string {
 
 /** Field-by-field validation messages, for showing under inputs. */
 export function fieldErrors(e: unknown): Record<string, string> {
-  const errors = e instanceof HttpErrorResponse ? e.error?.errors as Record<string, string[]> | undefined : undefined;
-  return Object.fromEntries(Object.entries(errors ?? {}).map(([k, v]) => [k, v[0]]));
+  const errors: Record<string, string[]> | undefined = e instanceof HttpErrorResponse ? e.error?.errors as Record<string, string[]> | undefined : undefined;
+  return Object.fromEntries(Object.entries(errors ?? {}).map(([k, v]: [string, string[]]): [string, string] => [k, v[0]]));
 }

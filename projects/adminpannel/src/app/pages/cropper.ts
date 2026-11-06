@@ -57,27 +57,27 @@ export class Cropper {
   private top = signal(0);
   private side = signal(1);
 
-  private short = computed(() => Math.min(this.w(), this.h()));
-  readonly zoom = computed(() => this.short() / this.side());
-  readonly transform = computed(() => {
-    const s = this.view() / this.side();
+  private short = computed((): number => Math.min(this.w(), this.h()));
+  readonly zoom = computed((): number => this.short() / this.side());
+  readonly transform = computed((): string => {
+    const s: number = this.view() / this.side();
     return `translate(${-this.left() * s}px, ${-this.top() * s}px) scale(${s})`;
   });
 
   private pointers = new Map<number, { x: number; y: number }>();
-  private pinch = 0;
+  private pinch: number = 0;
 
   constructor() {
-    const ro = new ResizeObserver(([e]) => this.view.set(e.contentRect.width || 320));
-    afterNextRender(() => ro.observe(this.frame().nativeElement));
-    inject(DestroyRef).onDestroy(() => ro.disconnect());
+    const ro: ResizeObserver = new ResizeObserver(([e]: ResizeObserverEntry[]): void => this.view.set(e.contentRect.width || 320));
+    afterNextRender((): void => ro.observe(this.frame().nativeElement));
+    inject(DestroyRef).onDestroy((): void => ro.disconnect());
   }
 
-  loaded(e: Event) {
-    const img = e.target as HTMLImageElement;
+  loaded(e: Event): void {
+    const img: HTMLImageElement = e.target as HTMLImageElement;
     this.w.set(img.naturalWidth);
     this.h.set(img.naturalHeight);
-    const c = this.initial();
+    const c: Crop | null = this.initial();
     if (c) {
       this.side.set(c.size * img.naturalWidth);
       this.left.set(c.x * img.naturalWidth);
@@ -90,17 +90,17 @@ export class Cropper {
     this.emit();
   }
 
-  centre() {
+  centre(): void {
     this.side.set(this.short());
     this.left.set((this.w() - this.short()) / 2);
     this.top.set((this.h() - this.short()) / 2);
     this.emit();
   }
 
-  setZoom(z: number) {
+  setZoom(z: number): void {
     // Zoom around the centre of the frame.
-    const cx = this.left() + this.side() / 2, cy = this.top() + this.side() / 2;
-    const side = this.short() / Math.min(4, Math.max(1, z));
+    const cx: number = this.left() + this.side() / 2, cy: number = this.top() + this.side() / 2;
+    const side: number = this.short() / Math.min(4, Math.max(1, z));
     this.side.set(side);
     this.left.set(cx - side / 2);
     this.top.set(cy - side / 2);
@@ -108,57 +108,57 @@ export class Cropper {
     this.emit();
   }
 
-  down(e: PointerEvent) {
+  down(e: PointerEvent): void {
     if (!this.ready()) return;
     this.frame().nativeElement.setPointerCapture(e.pointerId);
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     this.pinch = this.distance();
   }
-  move(e: PointerEvent) {
+  move(e: PointerEvent): void {
     const prev = this.pointers.get(e.pointerId);
     if (!prev) return;
     this.pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
     if (this.pointers.size === 2) {
-      const d = this.distance();
+      const d: number = this.distance();
       if (this.pinch) this.setZoom(this.zoom() * d / this.pinch);
       this.pinch = d;
       return;
     }
-    const perPx = this.side() / this.view();
-    this.left.update(l => l - (e.clientX - prev.x) * perPx);
-    this.top.update(t => t - (e.clientY - prev.y) * perPx);
+    const perPx: number = this.side() / this.view();
+    this.left.update((l: number): number => l - (e.clientX - prev.x) * perPx);
+    this.top.update((t: number): number => t - (e.clientY - prev.y) * perPx);
     this.clamp();
     this.emit();
   }
-  up(e: PointerEvent) {
+  up(e: PointerEvent): void {
     this.pointers.delete(e.pointerId);
     this.pinch = this.distance();
   }
-  wheel(e: WheelEvent) {
+  wheel(e: WheelEvent): void {
     if (!this.ready()) return;
     e.preventDefault();
     this.setZoom(this.zoom() * (e.deltaY < 0 ? 1.08 : 1 / 1.08));
   }
 
-  private distance() {
+  private distance(): number {
     const [a, b] = [...this.pointers.values()];
     return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
   }
-  private clamp() {
-    const side = Math.min(this.short(), Math.max(this.short() / 4, this.side()));
+  private clamp(): void {
+    const side: number = Math.min(this.short(), Math.max(this.short() / 4, this.side()));
     this.side.set(side);
     this.left.set(Math.min(this.w() - side, Math.max(0, this.left())));
     this.top.set(Math.min(this.h() - side, Math.max(0, this.top())));
   }
-  private emit() {
+  private emit(): void {
     if (!this.w()) return;
     this.cropChange.emit({ x: this.left() / this.w(), y: this.top() / this.h(), size: this.side() / this.w() });
   }
 }
 
 /** CSS transform that shows the same square in a box of `box` px (for previews). */
-export function cropStyle(c: Crop | null, w: number, h: number, box: number) {
+export function cropStyle(c: Crop | null, w: number, h: number, box: number): string {
   if (!c || !w) return '';
-  const s = box / (c.size * w);
+  const s: number = box / (c.size * w);
   return `translate(${-c.x * w * s}px, ${-c.y * h * s}px) scale(${s})`;
 }

@@ -238,12 +238,12 @@ class AdminApiTest extends TestCase
         config(['shop.photo_themes' => 'dark, real-dark']);
 
         Sanctum::actingAs($this->admin());
-        $this->getJson('/api/admin/settings')->assertExactJson(['photo_themes' => ['dark', 'real-dark'], 'cover_theme' => 'product']);
-        $this->putJson('/api/admin/settings', ['photo_themes' => ['real-white', 'light']])->assertExactJson(['photo_themes' => ['light', 'real-white'], 'cover_theme' => 'product']);
+        $this->getJson('/api/admin/settings')->assertExactJson(['photo_themes' => ['dark', 'real-dark'], 'cover_theme' => 'product', 'pagination' => 'pages']);
+        $this->putJson('/api/admin/settings', ['photo_themes' => ['real-white', 'light']])->assertExactJson(['photo_themes' => ['light', 'real-white'], 'cover_theme' => 'product', 'pagination' => 'pages']);
         $this->putJson('/api/admin/settings', ['photo_themes' => ['pink']])->assertJsonValidationErrors('photo_themes.0');
         $this->putJson('/api/admin/settings', ['photo_themes' => []])->assertJsonValidationErrors('photo_themes');
         $this->putJson('/api/admin/settings', ['photo_themes' => ['light', 'light']])->assertJsonValidationErrors('photo_themes.0');
-        $this->getJson('/api/admin/settings')->assertExactJson(['photo_themes' => ['light', 'real-white'], 'cover_theme' => 'product']);
+        $this->getJson('/api/admin/settings')->assertExactJson(['photo_themes' => ['light', 'real-white'], 'cover_theme' => 'product', 'pagination' => 'pages']);
 
         // Bad values in .env are dropped; with none valid, every type is shown.
         Setting::query()->delete();
@@ -268,6 +268,22 @@ class AdminApiTest extends TestCase
         $this->assertSame('dark', Setting::get('cover_theme'));
         config(['shop.cover_theme' => 'purple']);
         $this->assertSame('product', Setting::get('cover_theme'));
+    }
+
+    public function test_pagination_setting(): void
+    {
+        Sanctum::actingAs($this->admin());
+        $this->getJson('/api/catalogue')->assertJsonPath('pagination', 'pages');
+        $this->putJson('/api/admin/settings', ['pagination' => 'more'])->assertJsonPath('pagination', 'more');
+        // The cached catalogue is refreshed when the setting changes.
+        $this->getJson('/api/catalogue')->assertJsonPath('pagination', 'more');
+        $this->putJson('/api/admin/settings', ['pagination' => 'all'])->assertJsonPath('pagination', 'all');
+        $this->putJson('/api/admin/settings', ['pagination' => 'infinite'])->assertJsonValidationErrors('pagination');
+        $this->putJson('/api/admin/settings', ['cover_theme' => 'dark'])->assertJsonPath('pagination', 'all');
+
+        Setting::query()->delete();
+        config(['shop.pagination' => 'nope']);
+        $this->assertSame('pages', Setting::get('pagination'));
     }
 
     public function test_product_can_choose_its_own_photo_themes(): void

@@ -68,9 +68,9 @@ import { Counts, Toasts, inr, waLink, when } from '../core/ui';
   `,
 })
 export class EnquiriesPage {
-  private api = inject(Api);
-  private toasts = inject(Toasts);
-  readonly counts = inject(Counts);
+  private api: Api = inject(Api);
+  private toasts: Toasts = inject(Toasts);
+  readonly counts: Counts = inject(Counts);
   readonly when = when;
   readonly inr = inr;
 
@@ -82,34 +82,34 @@ export class EnquiriesPage {
   readonly error = signal('');
 
   constructor() {
-    effect(() => {
+    effect((): void => {
       const params = { page: this.page(), unread: this.unread() };
       this.loading.set(true);
       this.api.enquiries(params).subscribe({
-        next: r => { this.list.set(r.data); this.pages.set(r.meta.pages); this.loading.set(false); this.error.set(''); },
-        error: e => { this.error.set(errorText(e)); this.loading.set(false); },
+        next: (r): void => { this.list.set(r.data); this.pages.set(r.meta.pages); this.loading.set(false); this.error.set(''); },
+        error: (e: any): void => { this.error.set(errorText(e)); this.loading.set(false); },
       });
     });
   }
 
-  filter(unread: boolean) { this.unread.set(unread); this.page.set(1); }
-  wa(e: Enquiry) { return waLink(e.phone, `Hi ${e.name}, thank you for messaging Veloura. `); }
+  filter(unread: boolean): void { this.unread.set(unread); this.page.set(1); }
+  wa(e: Enquiry): string | null { return waLink(e.phone, `Hi ${e.name}, thank you for messaging Veloura. `); }
 
-  mark(e: Enquiry, read: boolean) {
+  mark(e: Enquiry, read: boolean): void {
     if (e.is_read === read) return;
-    this.list.update(l => l.map(x => x.id === e.id ? { ...x, is_read: read } : x));
-    this.counts.unread.update(n => Math.max(0, n + (read ? -1 : 1)));
-    this.api.markEnquiry(e.id, read).subscribe({ error: err => this.toasts.error(errorText(err)) });
+    this.list.update((l: Enquiry[]): Enquiry[] => l.map((x: Enquiry): Enquiry => x.id === e.id ? { ...x, is_read: read } : x));
+    this.counts.unread.update((n: number): number => Math.max(0, n + (read ? -1 : 1)));
+    this.api.markEnquiry(e.id, read).subscribe({ error: (err: any): void => this.toasts.error(errorText(err)) });
   }
-  remove(e: Enquiry) {
+  remove(e: Enquiry): void {
     if (!confirm(`Delete the message from ${e.name}?`)) return;
     this.api.deleteEnquiry(e.id).subscribe({
-      next: () => {
-        this.list.update(l => l.filter(x => x.id !== e.id));
-        if (!e.is_read) this.counts.unread.update(n => Math.max(0, n - 1));
+      next: (): void => {
+        this.list.update((l: Enquiry[]): Enquiry[] => l.filter((x: Enquiry): boolean => x.id !== e.id));
+        if (!e.is_read) this.counts.unread.update((n: number): number => Math.max(0, n - 1));
         this.toasts.ok('Message deleted');
       },
-      error: err => this.toasts.error(errorText(err)),
+      error: (err: any): void => this.toasts.error(errorText(err)),
     });
   }
 }

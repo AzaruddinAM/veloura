@@ -21,10 +21,12 @@ class Setting extends Model
         'photo_themes' => ProductPhoto::THEMES,
         // Photo type used as the cover (first photo, also in the bag); 'product' keeps each product's own.
         'cover_theme' => ['product', ...ProductPhoto::THEMES],
+        // How the shop lists products: numbered pages, a "View more" button, or everything at once.
+        'pagination' => ['pages', 'more', 'all'],
     ];
 
     /** Settings that hold one value instead of a list. */
-    public const SINGLE = ['cover_theme'];
+    public const SINGLE = ['cover_theme', 'pagination'];
 
     protected $primaryKey = 'key';
 

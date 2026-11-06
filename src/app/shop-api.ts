@@ -6,7 +6,7 @@ import { Injectable, inject } from '@angular/core';
  * and in production when the site and backend share a domain. If the backend is on
  * another domain, put its full URL here, e.g. 'https://api.veloura.in/api'.
  */
-export const API_URL = '/api';
+export const API_URL: string = '/api';
 
 /** Studio photo on a light or dark background, or a staged photo on a white box / dark velvet box. */
 export type Theme = 'light' | 'dark' | 'real-white' | 'real-dark';
@@ -20,7 +20,9 @@ export interface Product {
   /** Photos to show, first one first: only the photo types chosen in the admin panel. */
   images?: Photo[];
 }
-export interface Catalogue { categories: string[]; products: Product[]; }
+/** How the product grid is split, chosen in the admin panel: numbered pages, a "View more" button, or all at once. */
+export type Pagination = 'pages' | 'more' | 'all';
+export interface Catalogue { categories: string[]; products: Product[]; pagination?: Pagination; }
 
 /** The order as the server saved it: reference, confirmed lines (database prices) and total. */
 export interface PlacedOrder {
@@ -31,10 +33,10 @@ export type BagItem = { id: number; qty: number };
 
 @Injectable({ providedIn: 'root' })
 export class ShopApi {
-  private http = inject(HttpClient);
+  private http: HttpClient = inject(HttpClient);
 
   /** fresh: skip the browser cache, e.g. after an order was refused for stock. */
-  catalogue(fresh = false) {
+  catalogue(fresh: boolean = false) {
     return this.http.get<Catalogue>(`${API_URL}/catalogue`, fresh ? { params: { t: Date.now() } } : {});
   }
   /** Saves the bag as an order; refused (422) when a piece is sold out or not enough is left. */
