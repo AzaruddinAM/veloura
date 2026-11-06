@@ -13,8 +13,7 @@
 #   FTP_USERNAME
 #   FTP_PASSWORD
 # Optional repository variables:
-#   FTP_PUBLIC_DIR (default: domains/velourajewels.online/public_html/)
-#   FTP_APP_DIR    (default: domains/velourajewels.online/veloura/)
+#   FTP_PUBLIC_DIR / FTP_APP_DIR  only if the automatic folder search (deploy/locate.sh) fails
 #   DEPLOY_BASE    commit that is live when the server has no veloura/.deployed-commit yet
 #                  (default: 46b55e3, the version uploaded by hand on 2 Nov 2026)
 
@@ -35,8 +34,9 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PUBLIC_DIR: ${{ vars.FTP_PUBLIC_DIR || 'domains/velourajewels.online/public_html/' }}
-  APP_DIR: ${{ vars.FTP_APP_DIR || 'domains/velourajewels.online/veloura/' }}
+  # Found automatically over FTP (deploy/locate.sh); set these variables only to override.
+  FTP_PUBLIC_DIR: ${{ vars.FTP_PUBLIC_DIR }}
+  FTP_APP_DIR: ${{ vars.FTP_APP_DIR }}
   DEPLOY_BASE: ${{ vars.DEPLOY_BASE || '46b55e3a9d9bae4774d2ca3401b168070feb4ffa' }}
 
 jobs:
@@ -105,6 +105,12 @@ jobs:
           set net:timeout 30
           set cmd:fail-exit yes
           EOF
+
+      - name: Find the site and backend folders
+        env:
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: bash deploy/locate.sh
 
       - name: Find the live version
         env:
