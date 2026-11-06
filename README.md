@@ -110,7 +110,10 @@ npm start                                  # http://localhost:4200
 
 ## Going live
 
-The easiest way: upload the ready-made package `release/veloura.zip` (shop, admin panel and backend in one, for a single domain) and follow `DEPLOY.md` inside it. The shop opens at `/` and the admin panel at `/adminpannel/`.
+The live site (https://velourajewels.online) updates itself: every push to `main` runs `.github/workflows/deploy.yml`, which tests the backend, builds the shop and admin panel, and uploads over FTP **only the files that changed** since the live version (saved on the server in `veloura/.deployed-commit`). It never touches `public_html/media/`, `veloura/.env` or `veloura/storage/`, and clears the cached product list afterwards. Each run's page on GitHub (Actions tab) lists the files it uploaded and deleted. You can also start it by hand: Actions → Deploy to Hostinger → Run workflow.
+
+- Needs the repository secrets `FTP_SERVER`, `FTP_USERNAME`, `FTP_PASSWORD` (Settings → Secrets and variables → Actions).
+- Database changes are not run by the deploy: if a release adds a migration, run it on the server (or import the SQL in phpMyAdmin).
 
 To host the parts separately instead:
 
