@@ -11,13 +11,13 @@
 # Needs: FTP_HOST, FTP_USERNAME, FTP_PASSWORD, RUNNER_TEMP, optional FTP_PUBLIC_DIR / FTP_APP_DIR.
 set -uo pipefail
 
-ftp() { lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_HOST" -e "source $RUNNER_TEMP/lftp-settings; $1; bye" 2>/dev/null; }
-has() { ftp "cls -1 \"$1\"" > /dev/null; }
+ftp() { timeout 90 lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_HOST" -e "source $RUNNER_TEMP/lftp-settings; $1; bye" 2>/dev/null; }
+has() { ftp "set net:max-retries 1; cat \"$1\"" > /dev/null; }
 site_at() { has "${1}index.php" && has "${1}adminpannel/index.html"; }
 app_at() { has "${1}vendor/autoload.php" && has "${1}artisan"; }
 
 echo "FTP login opens in: $(ftp 'pwd' | head -1)"
-echo "Top-level entries: $(ftp 'cls -1 -a' | tr '\n' ' ')"
+echo "Top-level entries: $(ftp 'set net:max-retries 1; cls -1 -a' | tr '\n' ' ')"
 
 candidates=()
 [ -n "${FTP_PUBLIC_DIR:-}" ] && [ -n "${FTP_APP_DIR:-}" ] && candidates+=("$FTP_PUBLIC_DIR|$FTP_APP_DIR")

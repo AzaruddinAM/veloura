@@ -30,7 +30,7 @@ on:
 
 # One deploy at a time; a newer push waits for the running one.
 concurrency:
-  group: deploy-hostinger
+  group: hostinger-deploy
   cancel-in-progress: false
 
 env:
@@ -42,6 +42,7 @@ env:
 jobs:
   test:
     name: Test backend
+    timeout-minutes: 15
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -63,6 +64,7 @@ jobs:
 
   deploy:
     name: Upload changed files
+    timeout-minutes: 30
     needs: test
     runs-on: ubuntu-latest
     steps:
@@ -117,8 +119,8 @@ jobs:
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
-          live=$(lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_HOST" \
-                   -e "source $RUNNER_TEMP/lftp-settings; set cmd:fail-exit no; cat ${APP_DIR}.deployed-commit; bye" 2>/dev/null | tr -d '[:space:]' || true)
+          live=$(timeout 90 lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "$FTP_HOST" \
+                   -e "source $RUNNER_TEMP/lftp-settings; set cmd:fail-exit no; set net:max-retries 1; cat ${APP_DIR}.deployed-commit; bye" 2>/dev/null | tr -d '[:space:]' || true)
           if [ -n "$live" ]; then echo "Live version (from the server): $live"; else live=$DEPLOY_BASE; echo "No .deployed-commit on the server yet; using DEPLOY_BASE: $live"; fi
           if ! git cat-file -e "$live^{commit}" 2>/dev/null; then echo "::error::Live commit $live is not in this repository."; exit 1; fi
           echo "LIVE=$(git rev-parse "$live")" >> "$GITHUB_ENV"
